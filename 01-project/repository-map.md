@@ -1,170 +1,34 @@
-# MTA Market — Repository Map
+# Карта репозиториев
 
-**Last updated:** 2026-09-07
+Три репозитория. Дублировать спецификации между ними нельзя.
 
----
+## mta-market-site
 
-## Project Structure
+Веб-платформа: Express API, Next.js, Prisma, Docker.
 
-MTA Market consists of three separate repositories:
+Ответственность: аккаунты, каталог, заказы/покупки, платежи, модерация, license server HTTP.
 
-### 1. mta-market-site
-**Purpose:** Web platform (backend + frontend)
+Не класть сюда: полную спецификацию DRM, ADR, модель угроз.
 
-**Location:** https://github.com/acc-holo-dev/mta-market-site
+## mta-market-module
 
-**Tech stack:**
-- Backend: Node.js + Express + TypeScript + Prisma
-- Frontend: Next.js 15 + React 19 + TailwindCSS
-- Database: PostgreSQL 16
-- Cache: Redis 7
-- Storage: S3/R2
+Нативный модуль MTA (C++20).
 
-**Responsibilities:**
-- User authentication & authorization
-- Seller profiles & catalog
-- Resource/service metadata
-- Payments & financial ledger
-- Moderation & admin
-- DRM license server
-- API endpoints
+Два слоя:
 
----
+1. **SDK** — биндинг Lua, async, таймеры, userdata, CLI `mta`. Документация SDK: `other/documents/` (английский, это API компилятора).
+2. **DRM spike** — `source/functions/drm/spike.cpp`, cipher = byte complement. Не production Guard.
 
-### 2. mta-market-module
-**Purpose:** Native MTA client module (C++)
+## mta-market-document
 
-**Location:** https://github.com/acc-holo-dev/mta-market-module
+Этот репозиторий. Контракт между сайтом и модулем, статус, ADR, платежи, безопасность.
 
-**Tech stack:**
-- C++20
-- MTA Module SDK
-- Cryptographic libraries (OpenSSL/libsodium)
+## Контракты между репо
 
-**Responsibilities:**
-- Installation identity & keypair generation
-- License verification (signature checking)
-- Artifact hash verification
-- Local lease enforcement
-- Communication with license API
-- Anti-tamper checks
+| Контракт | Где описан | Где код |
+|---|---|---|
+| HTTP API | [02-architecture/api.md](../02-architecture/api.md) | `apps/server/src/routes/` |
+| Схема БД | [02-architecture/database.md](../02-architecture/database.md) | `apps/server/src/prisma/contract.prisma` |
+| DRM протокол | [03-features/drm.md](../03-features/drm.md) | spike в module, v1 в `routes/drm.ts` |
 
----
-
-### 3. mta-market-document
-**Purpose:** Technical documentation & specifications
-
-**Location:** https://github.com/acc-holo-dev/mta-market-document
-
-**Contents:**
-- Architecture documentation
-- API contracts
-- DRM protocol specification
-- Security requirements
-- Production gates
-- ADRs (Architecture Decision Records)
-- Stage reports & audit findings
-
----
-
-## Repository Boundaries
-
-### What belongs where
-
-| Concern | Repository |
-|---|---|
-| User accounts | mta-market-site |
-| Seller dashboard | mta-market-site |
-| Product catalog | mta-market-site |
-| Payment processing | mta-market-site |
-| License issuance | mta-market-site |
-| Installation activation | mta-market-site |
-| Moderation | mta-market-site |
-| Admin tools | mta-market-site |
-| | |
-| Installation keypair | mta-market-module |
-| License signature verification | mta-market-module |
-| Artifact verification | mta-market-module |
-| Local lease enforcement | mta-market-module |
-| MTA runtime integration | mta-market-module |
-| | |
-| Architecture specs | mta-market-document |
-| API contracts | mta-market-document |
-| DRM protocol | mta-market-document |
-| Security requirements | mta-market-document |
-| Production readiness | mta-market-document |
-
----
-
-## Cross-repository contracts
-
-### DRM Protocol v2
-Versioned protocol between site and module:
-- Lease request/response format
-- Signature algorithms
-- Error codes
-- Compatibility matrix
-
-**Documented in:** `mta-market-document/03-features/drm/protocol-v2.md`
-
-### Artifact Format
-Resource package structure:
-- Manifest schema
-- Signature format
-- Metadata fields
-
-**Documented in:** `mta-market-document/03-features/artifacts/format.md`
-
----
-
-## Development workflow
-
-### Working on site features
-1. Clone `mta-market-site`
-2. Make changes
-3. Update `mta-market-document` if API/protocol changes
-4. Submit PR
-
-### Working on module features
-1. Clone `mta-market-module`
-2. Make changes
-3. Update `mta-market-document` if protocol changes
-4. Test compatibility with site
-5. Submit PR
-
-### Working on documentation
-1. Clone `mta-market-document`
-2. Update specifications
-3. Ensure status.md reflects implementation reality
-4. Submit PR
-
----
-
-## CI/CD coordination
-
-### Site CI
-- Lint, typecheck, build
-- Unit & integration tests
-- Protocol compatibility check (against documented version)
-
-### Module CI
-- Format, compile (Windows/Linux)
-- Unit tests
-- Protocol compatibility check (against documented version)
-
-### Cross-repo compatibility
-When protocol changes:
-1. Update specification in `mta-market-document`
-2. Version bump in both site and module
-3. Compatibility matrix update
-4. CI ensures both sides support the version
-
----
-
-## Historical note
-
-Previous repository names (deprecated):
-- `mta-market` → renamed to `mta-market-site`
-- `mta-guard-module` → renamed to `mta-market-module`
-
-All documentation updated 2026-09-07 to reflect current names.
+Смена протокола: сначала документ и версия, потом код с обеих сторон.
