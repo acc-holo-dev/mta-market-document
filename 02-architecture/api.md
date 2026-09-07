@@ -1,4 +1,4 @@
-# 🔌 API — все эндпоинты
+﻿# 🔌 API — все эндпоинты
 
 > REST API Backend. Формат: JSON через HTTPS.
 > Авторизация: `Authorization: Bearer <JWT>` (кроме публичных).
