@@ -12,8 +12,8 @@
 1. **Clone repository**
 
 ```bash
-git clone https://github.com/acc-holo-dev/mta-market.git
-cd mta-market
+git clone https://github.com/acc-holo-dev/mta-market-site.git
+cd mta-market-site
 ```
 
 2. **Create environment file**
@@ -473,6 +473,6 @@ CREATE INDEX IF NOT EXISTS idx_purchases_buyer ON purchases(buyer_id);
 
 For issues and questions:
 
-- GitHub Issues: https://github.com/acc-holo-dev/mta-market/issues
+- GitHub Issues: https://github.com/acc-holo-dev/mta-market-site/issues
 - Documentation: https://docs.yourdomain.com
 - Email: support@yourdomain.com

@@ -211,5 +211,5 @@ docker-compose up -d
 
 - **[1.0.0]** - Initial release (2025-01-XX)
 
-[Unreleased]: https://github.com/acc-holo-dev/mta-market/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/acc-holo-dev/mta-market/releases/tag/v1.0.0
+[Unreleased]: https://github.com/acc-holo-dev/mta-market-site/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/acc-holo-dev/mta-market-site/releases/tag/v1.0.0

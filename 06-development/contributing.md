@@ -27,7 +27,7 @@
 
 ### 🐛 Нашли баг?
 
-1. Проверьте [GitHub Issues](https://github.com/acc-holo-dev/mta-market/issues) — возможно, кто-то уже сообщил об этом
+1. Проверьте [GitHub Issues](https://github.com/acc-holo-dev/mta-market-site/issues) — возможно, кто-то уже сообщил об этом
 2. Если нет — создайте новый issue с подробным описанием:
    - Шаги для воспроизведения
    - Ожидаемое поведение
@@ -68,11 +68,11 @@
 # Fork репозиторий через GitHub UI
 
 # Клонировать ваш fork
-git clone https://github.com/YOUR_USERNAME/mta-market.git
-cd mta-market
+git clone https://github.com/YOUR_USERNAME/mta-market-site.git
+cd mta-market-site
 
 # Добавить upstream
-git remote add upstream https://github.com/acc-holo-dev/mta-market.git
+git remote add upstream https://github.com/acc-holo-dev/mta-market-site.git
 ```
 
 ### 2. Создать ветку

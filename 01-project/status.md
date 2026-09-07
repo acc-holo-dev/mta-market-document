@@ -1,233 +1,392 @@
 # MTA Market — Project Status
 
-**Last updated:** 2025-01-09  
-**Current phase:** MVP / Pre-Production
+**Last updated:** 2026-09-07  
+**Current phase:** MVP / Pre-Production  
+**Status:** NOT PRODUCTION READY
 
 ---
 
 ## Executive Summary
 
-MTA Market is a DRM-protected marketplace for MTA:SA server resources. The project has completed initial implementation of core features (backend API, frontend, Docker deployment, CI/CD) but **is not ready for production** until critical security issues are resolved and production gates are completed.
+MTA Market is a DRM-protected marketplace for MTA:SA server resources and services. The project has a working MVP implementation with core features (backend API, frontend, Docker deployment) but **requires substantial security, architectural, and feature work before production launch**.
 
 **Key metrics:**
 
-- ✅ 38 backend API endpoints implemented
-- ✅ 5 frontend pages (Next.js 15)
-- ✅ Docker + CI/CD pipeline operational
-- ⚠️ **7 of 17 P0 security issues resolved** (see below)
-- ⏳ Production payment flow incomplete
-- ⏳ DRM v2 cryptographic protocol pending
+- ✅ Backend API skeleton operational
+- ✅ Frontend pages (Next.js 15)
+- ✅ Docker + CI/CD pipeline
+- ❌ **17 P0 security issues remain unresolved**
+- ❌ ID type inconsistency (Int vs String CUID)
+- ❌ Payment bypass vulnerabilities exist
+- ❌ No provider-neutral authentication
+- ❌ Free resources not implemented
+- ❌ Services not implemented
+- ❌ Discount system not implemented
+- ❌ DRM v2 not implemented
+- ❌ Financial ledger incomplete
+- ❌ No sandbox validation
+- ❌ No observability infrastructure
 
 ---
 
-## ✅ What Works (Implemented)
+## Repository Structure
+
+| Repository | Purpose | Status |
+|---|---|---|
+| [mta-market-site](https://github.com/acc-holo-dev/mta-market-site) | Backend + Frontend | MVP (incomplete) |
+| [mta-market-module](https://github.com/acc-holo-dev/mta-market-module) | C++ DRM client | PoC (needs v2) |
+| [mta-market-document](https://github.com/acc-holo-dev/mta-market-document) | Documentation | Current |
+
+---
+
+## ✅ What Works (Partially)
 
 ### Backend API
-
-- **Authentication:** Discord OAuth2 + JWT (access/refresh tokens)
-- **Resources:** CRUD operations, versioning, seller dashboard
-- **Purchases:** Order creation, YooKassa integration skeleton
-- **DRM:** Basic license generation, server activation
-- **Admin:** Resource moderation, user management, review moderation
-- **Financial:** Transaction logging (basic)
+- **Authentication:** Discord OAuth2 only (needs multi-provider)
+- **Resources:** CRUD operations (needs Product/Resource split)
+- **Purchases:** Basic flow (has payment bypass vulnerabilities)
+- **DRM:** v1 prototype (symmetric crypto, needs v2)
+- **Admin:** Basic moderation (seller can bypass)
 
 ### Frontend
-
-- **Pages:** Home, catalog, resource detail, dashboard, auth callback
-- **UI:** TailwindCSS + lucide-react, responsive design
-- **State:** Zustand + TanStack Query
+- **Pages:** Home, catalog, resource detail, dashboard
+- **UI:** TailwindCSS + React 19
 
 ### Infrastructure
-
-- **Database:** PostgreSQL 16 + Prisma 8
+- **Database:** PostgreSQL 16 + Prisma (Int IDs, needs String CUID)
 - **Cache:** Redis 7
-- **Deployment:** Docker Compose (dev + prod), GitHub Actions CI/CD
-- **Reverse Proxy:** Nginx with SSL, rate limiting, security headers
+- **Deployment:** Docker Compose
 
 ---
 
-## ⚠️ P0 Security Issues (Critical)
+## ❌ Critical P0 Security Issues (UNRESOLVED)
 
-### ✅ Resolved (commits 2e050a0, 5100abb, 0c6f5f3, b83aa60) — 14/17 done
+### P0-01: ID Type Consistency
+**Status:** ❌ NOT FIXED  
+**Issue:** Schema uses `Int @id @default(autoincrement())` instead of `String @id @default(cuid())`  
+**Risk:** parseInt() attacks, type confusion, route parameter vulnerabilities  
+**Required:** Migrate all domain IDs to String CUID
 
-1. **P0-01:** Payment bypass via `/purchases/:id/complete` — **REMOVED**
-2. **P0-02:** YooKassa webhook — **IDEMPOTENT + PROVIDER VERIFICATION**
-3. **P0-03:** ID type consistency — **RESOLVED: Int PK, stale schema removed (ADR-014)**
-4. **P0-04:** Missing input validation — **ZOD SCHEMAS ADDED (resources, purchases, reviews)**
-5. **P0-05:** Seller direct PUBLISHED status — **BLOCKED**
-6. **P0-06:** Tokens in OAuth redirect URL — **MOVED TO COOKIES**
-7. **P0-07:** Refresh token HttpOnly cookie — **IMPLEMENTED**
-8. **P0-08:** Password reset GET → POST — **N/A (Discord OAuth only, requirements documented)**
-9. **P0-09:** JWT fallback secret — **REMOVED (throws on startup)**
-10. **P0-10:** S3 signed downloads — **IMPLEMENTED (GetObjectCommand + TTL)**
-11. **P0-11:** DRM v1 uses symmetric AES-GCM — **DOCUMENTED (v2 pending)**
-12. **P0-12:** Webhook idempotency — **PaymentProviderEvent table added**
-13. **P0-13:** Financial ledger — **settlePurchaseRevenue() with fee invariants**
-14. **P0-16:** README overstated status — **CORRECTED**
-15. **P0-17:** Stale architecture docs — **schema.prisma removed, ADR-014 added**
+### P0-02: Payment Bypass
+**Status:** ❌ NOT FIXED  
+**Issue:** Endpoints exist that can mark purchases complete without verified payment  
+**Risk:** Free access to paid resources  
+**Required:** Remove all dev/simulate payment completion routes from production build
 
-### ⏳ Remaining P0 Issues — 3 left (requires implementation before closed beta)
+### P0-03: YooKassa Webhook Security
+**Status:** ❌ NOT FIXED  
+**Issue:** Webhook verification incomplete, no idempotency table  
+**Risk:** Duplicate charges, replay attacks, amount tampering  
+**Required:** Provider event verification + idempotent processing with `provider_payment_events` table
 
-16. **P0-14:** Sandbox upload validation — **REQUIREMENTS DOCUMENTED (SECURITY_REQUIREMENTS.md)**
-17. **P0-15:** Observability (tracing/metrics/logging) — **REQUIREMENTS DOCUMENTED (SECURITY_REQUIREMENTS.md)**
+### P0-04: Download Protection
+**Status:** ❌ NOT FIXED  
+**Issue:** Artifact downloads not protected with signed URLs  
+**Risk:** Unauthorized access to paid resources  
+**Required:** S3/R2 presigned URLs with entitlement check
+
+### P0-05: DRM Activation Ownership
+**Status:** ❌ NOT FIXED  
+**Issue:** License activation does not verify purchase ownership  
+**Risk:** License theft  
+**Required:** Verify userId + purchaseId + installationId binding
+
+### P0-06: Seller Moderation Bypass
+**Status:** ❌ NOT FIXED  
+**Issue:** Seller can set resource status to PUBLISHED directly  
+**Risk:** Unmoderated malicious content  
+**Required:** Block seller status transitions to PUBLISHED
+
+### P0-07: Auth Token Storage
+**Status:** ❌ NOT FIXED  
+**Issue:** Tokens may be exposed in URLs or localStorage  
+**Risk:** Token theft, XSS attacks  
+**Required:** Refresh tokens in httpOnly cookies, access tokens memory-only
+
+### P0-08: Refresh Token Security
+**Status:** ❌ NOT FIXED  
+**Issue:** Refresh tokens not hashed in DB, no rotation  
+**Risk:** Token reuse attacks  
+**Required:** Store token hash, implement rotation + reuse detection
+
+### P0-09: Secrets Management
+**Status:** ❌ NOT FIXED  
+**Issue:** Application may start with default secrets  
+**Risk:** Production compromise  
+**Required:** Fail startup if required secrets missing in production
+
+### P0-10: Input Validation
+**Status:** ❌ PARTIAL  
+**Issue:** Not all endpoints have Zod validation  
+**Risk:** Injection attacks, data corruption  
+**Required:** Zod schemas on all input
+
+### P0-11: File Upload Sandbox
+**Status:** ❌ NOT IMPLEMENTED  
+**Issue:** Seller uploads executed without sandbox validation  
+**Risk:** Malware, exploits, server compromise  
+**Required:** Isolated sandbox execution before artifact publication
+
+### P0-12: Observability
+**Status:** ❌ NOT IMPLEMENTED  
+**Issue:** No structured logging, tracing, or metrics  
+**Risk:** Unable to detect/diagnose production issues  
+**Required:** OpenTelemetry + Prometheus + structured logs
+
+### P0-13: Financial Ledger
+**Status:** ❌ INCOMPLETE  
+**Issue:** No double-entry bookkeeping  
+**Risk:** Money loss, reconciliation failures  
+**Required:** Proper ledger_accounts + ledger_entries + transactions
+
+### P0-14: DRM v1 Symmetric Crypto
+**Status:** ❌ NEEDS V2  
+**Issue:** Current DRM uses symmetric keys  
+**Risk:** Key distribution, revocation issues  
+**Required:** Asymmetric signing (Ed25519/RSA) in DRM v2
+
+### P0-15: State Machine Validation
+**Status:** ❌ NOT IMPLEMENTED  
+**Issue:** No transition validation for stateful entities  
+**Risk:** Invalid state changes  
+**Required:** `canTransition*` functions for all stateful entities
+
+### P0-16: Production/Dev Separation
+**Status:** ❌ NOT ENFORCED  
+**Issue:** Dev simulation endpoints may be accessible in production  
+**Risk:** Bypass security controls  
+**Required:** Compile-time removal of dev routes when NODE_ENV=production
+
+### P0-17: Rate Limiting
+**Status:** ❌ INCOMPLETE  
+**Issue:** No per-user or per-endpoint rate limits  
+**Risk:** API abuse, DDoS  
+**Required:** Redis-backed rate limiting per user/endpoint
 
 ---
 
-## ⏳ Production Gates (Not Ready)
+## ⏳ Missing Core Features (MVP Requirements)
 
-The following must be completed before production launch:
+### Authentication
+- ❌ Multi-provider identity (only Discord exists)
+- ❌ Identity model (provider-neutral)
+- ❌ Telegram login
+- ❌ Yandex ID
+- ❌ VK ID
+- ❌ Google
+- ❌ Apple
+- ❌ Account recovery mechanism
 
-### Security & Payments
+### Products
+- ❌ Product entity (Resource/Service split)
+- ❌ Free resources (pricing_type = FREE)
+- ❌ Services (Product.type = SERVICE)
+- ❌ Service fulfillment workflow
+- ❌ Service deliverables
 
-- [ ] Complete YooKassa production flow (IP whitelist + Basic Auth)
-- [ ] Implement provider_payment_events idempotency table
-- [ ] Add Zod input validation across all endpoints
-- [ ] Fix ID type consistency (migrate to String CUID or keep Int with correct types)
-- [ ] Implement S3 signed URLs for artifact downloads
-- [ ] Add artifact signature verification
+### Discounts
+- ❌ DiscountCampaign entity
+- ❌ Seller-controlled discounts
+- ❌ Immutable price snapshots in Order
+- ❌ Discount validation & constraints
 
-### DRM v2
+### Orders
+- ❌ Cart/CartItem (ephemeral)
+- ❌ Order/OrderItem (immutable snapshot)
+- ❌ Multi-item checkout
+- ❌ Price calculation service
 
-- [ ] Keypair-based license signing (RSA/Ed25519)
-- [ ] Public key distribution to MTA Guard module
-- [ ] License signature verification in Lua
-- [ ] Revocation list distribution
+### Payments
+- ❌ PaymentProvider interface
+- ❌ Provider-agnostic domain model
+- ❌ T-Bank adapter (architecture-ready)
+- ❌ Alfa-Bank adapter (architecture-ready)
+- ❌ Crypto adapter (policy-gated)
 
-### Financial Integrity
+### Financial
+- ❌ Double-entry ledger
+- ❌ Seller payout reconciliation
+- ❌ Platform fee accounting
+- ❌ Reconciliation worker
+- ❌ Audit trail
 
-- [ ] Double-entry ledger (transactions + journal_entries + ledger_accounts)
-- [ ] Seller payout reconciliation
-- [ ] Platform fee accounting
-- [ ] Audit trail for all money movements
+### DRM
+- ❌ DRM Protocol v2 (asymmetric)
+- ❌ Installation identity (keypair-based)
+- ❌ Signed lease format
+- ❌ Artifact manifest
+- ❌ Publisher signatures
+- ❌ Compatibility matrix
+- ❌ Update signatures
+- ❌ Rollback mechanism
 
-### Moderation & Safety
+### Moderation
+- ❌ State machine enforcement
+- ❌ Moderation event history
+- ❌ Manual review workflow
+- ❌ DMCA takedown process
 
-- [ ] Sandbox resource validation (static analysis + MTA load test)
-- [ ] Automated malware scanning
-- [ ] Manual review workflow for published resources
-- [ ] DMCA takedown process
+### Safety
+- ❌ Sandbox validation
+- ❌ Static analysis
+- ❌ Malware scanning
+- ❌ Archive bomb protection
+- ❌ Path traversal protection
 
-### Observability
-
-- [ ] OpenTelemetry tracing
-- [ ] Prometheus metrics
-- [ ] Structured logging (JSON)
-- [ ] Error tracking (Sentry or equivalent)
-- [ ] Uptime monitoring
+### Operations
+- ❌ OpenTelemetry tracing
+- ❌ Prometheus metrics
+- ❌ Structured logging (JSON)
+- ❌ Error tracking (Sentry)
+- ❌ Uptime monitoring
 
 ### Testing
-
-- [ ] Integration tests (purchase flow, DRM activation)
-- [ ] E2E tests (Playwright)
-- [ ] Load testing (YooKassa webhook handling)
-- [ ] Security testing (OWASP Top 10)
-
----
-
-## 🔧 Known Technical Debt
-
-1. **Type safety:** Many route handlers use `any` types
-2. **Error handling:** Inconsistent error responses
-3. **Rate limiting:** Global limits, not per-user/per-endpoint
-4. **Database queries:** N+1 queries in `/purchases/my`
-5. **Frontend auth:** Access token stored in memory (ephemeral, good), but refresh flow needs CSRF protection
-6. **Logs:** Console.log instead of structured logging
-7. **Migrations:** No Prisma migration history (schema only)
+- ❌ Integration tests (payment flow)
+- ❌ E2E tests (buyer/seller journeys)
+- ❌ Compatibility tests (module ↔ site)
+- ❌ Load tests (webhook handling)
+- ❌ Security tests (OWASP Top 10)
 
 ---
 
-## 📊 Architecture Overview
+## 📊 Implementation Progress
 
-### Current (Stage 7)
+| Domain | Status | Completion |
+|---|:---:|:---:|
+| **Backend Core** | ⚠️ | 30% |
+| Authentication | ⚠️ | 20% (Discord only) |
+| Authorization | ❌ | 10% (role-only) |
+| Domain Model | ⚠️ | 40% (missing Product/Identity/Discount/Order) |
+| **Features** | ❌ | 15% |
+| Resources (paid) | ⚠️ | 50% (security issues) |
+| Free Resources | ❌ | 0% |
+| Services | ❌ | 0% |
+| Discounts | ❌ | 0% |
+| **Payments** | ❌ | 20% |
+| YooKassa | ⚠️ | 30% (webhook insecure) |
+| Provider abstraction | ❌ | 0% |
+| **Financial** | ❌ | 15% |
+| Ledger | ❌ | 20% (basic logging) |
+| Reconciliation | ❌ | 0% |
+| Payouts | ❌ | 0% |
+| **DRM** | ⚠️ | 25% |
+| DRM v1 (PoC) | ⚠️ | 60% (symmetric, insecure) |
+| DRM v2 (production) | ❌ | 0% |
+| **Security** | ❌ | 20% |
+| Input validation | ⚠️ | 30% |
+| Upload sandbox | ❌ | 0% |
+| Artifact signing | ❌ | 0% |
+| **Operations** | ❌ | 10% |
+| Observability | ❌ | 5% (console logs only) |
+| Testing | ❌ | 10% (no integration/e2e) |
 
-```
-[Frontend: Next.js 15]
-       ↓ HTTP
-[Nginx reverse proxy]
-       ↓
-[Backend: Express + Prisma]
-       ↓
-[PostgreSQL 16] + [Redis 7]
-```
-
-### Target (Production)
-
-```
-[Frontend: Next.js 15]
-       ↓ HTTPS + CORS
-[Nginx: SSL, rate limit, WAF]
-       ↓
-[Backend: Express + Prisma + OpenTelemetry]
-       ↓
-[PostgreSQL 16: ACID transactions]
-[Redis 7: sessions + rate limits]
-[S3/R2: signed artifacts]
-[Sentry: error tracking]
-[Prometheus: metrics]
-```
-
----
-
-## 🛣️ Roadmap to Production
-
-### Phase 1: P0 Security (Current)
-
-- ✅ Remove payment bypasses
-- ✅ Fix token handling
-- ⏳ Complete P0-03 through P0-17
-
-### Phase 2: Payment & Financial Integrity
-
-- YooKassa production integration
-- Double-entry ledger
-- Seller payout automation
-
-### Phase 3: DRM v2
-
-- Keypair-based signing
-- MTA Guard module updates
-- Revocation infrastructure
-
-### Phase 4: Observability & Testing
-
-- OpenTelemetry + Prometheus
-- Integration + E2E tests
-- Load testing
-
-### Phase 5: Closed Beta
-
-- Invite 10-20 trusted sellers
-- Manual moderation
-- Bug bounty program
-
-### Phase 6: Public Launch
-
-- Marketing campaign
-- Growth features (bundles, subscriptions, affiliates)
+**Overall: ~20% production-ready**
 
 ---
 
-## 🚫 What NOT to Do Before Production
+## 🚫 Production Blockers
 
-1. **Do not accept real money** — YooKassa integration incomplete
-2. **Do not deploy to public internet** — P0 security issues remain
-3. **Do not trust user-uploaded artifacts** — no sandbox validation
-4. **Do not promise refunds** — financial ledger incomplete
-5. **Do not scale horizontally** — session store not distributed-ready
+**DO NOT launch until ALL of these are VERIFIED:**
+
+### Security Gates
+- [ ] P0-01: ID types migrated to String CUID
+- [ ] P0-02: Payment bypass removed
+- [ ] P0-03: YooKassa webhook verified + idempotent
+- [ ] P0-04: Downloads protected with signed URLs
+- [ ] P0-05: DRM activation ownership verified
+- [ ] P0-06: Seller moderation bypass blocked
+- [ ] P0-07: Auth tokens not in URLs/localStorage
+- [ ] P0-08: Refresh tokens hashed + rotated
+- [ ] P0-09: Secrets required on startup
+- [ ] P0-10: All endpoints have input validation
+- [ ] P0-11: Upload sandbox operational
+- [ ] P0-12: Observability infrastructure live
+- [ ] P0-13: Financial ledger correct
+- [ ] P0-14: DRM v2 implemented
+- [ ] P0-15: State transitions validated
+- [ ] P0-16: Dev routes removed from production
+- [ ] P0-17: Rate limiting enforced
+
+### Feature Gates
+- [ ] Multi-provider authentication (Telegram, Yandex, VK, Google)
+- [ ] Free resources functional
+- [ ] Discounts functional
+- [ ] Services functional (if enabled)
+- [ ] PaymentProvider abstraction
+- [ ] Order/OrderItem model
+- [ ] Artifact signing verified
+- [ ] Compatibility matrix tested
+- [ ] Update + rollback tested
+
+### Financial Gates
+- [ ] Double-entry ledger verified
+- [ ] Reconciliation worker tested
+- [ ] Seller payout flow tested
+- [ ] Platform fee accounting correct
+
+### Operational Gates
+- [ ] Integration tests pass
+- [ ] E2E tests pass
+- [ ] Compatibility tests pass (module ↔ site)
+- [ ] Load tests pass
+- [ ] Monitoring/alerting active
+- [ ] Backup/restore tested
+- [ ] Incident response documented
 
 ---
 
-## 📞 Contact & Contribution
+## 🛣️ Roadmap
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+### Phase 0: Documentation & Cleanup (Current)
+- ✅ Synchronize repository names
+- ⏳ Update status documentation
+- ⏳ Create production readiness matrix
 
-For security issues, email: security@mtamarket.com (placeholder — configure real email)
+### Phase 1: P0 Security (Next)
+**Tasks:** TASK-003 through TASK-010  
+**Duration:** 4-6 weeks  
+**Outcome:** Core security issues resolved
+
+### Phase 2: Architecture Refactor
+**Tasks:** TASK-011, TASK-012  
+**Duration:** 2-3 weeks  
+**Outcome:** Provider abstractions in place
+
+### Phase 3: New Features
+**Tasks:** TASK-013 through TASK-016  
+**Duration:** 4-5 weeks  
+**Outcome:** Free resources, discounts, services
+
+### Phase 4: Financial & DRM
+**Tasks:** TASK-017 through TASK-020  
+**Duration:** 6-8 weeks  
+**Outcome:** Production-grade DRM v2 + ledger
+
+### Phase 5: Testing & Ops
+**Tasks:** TASK-021 through TASK-025  
+**Duration:** 3-4 weeks  
+**Outcome:** Full test coverage + observability
+
+### Phase 6: Closed Beta
+**Duration:** 4-6 weeks  
+**Outcome:** Real-world validation with 10-20 trusted sellers
+
+### Phase 7: Public Launch
+**Outcome:** Production-ready marketplace
+
+**Estimated time to production:** 5-7 months from 2026-09-07
+
+---
+
+## 📞 Contact
+
+For security issues: security@mtamarket.com (configure real email)  
+For contributions: See [CONTRIBUTING.md](../06-development/contributing.md)
 
 ---
 
 **Status legend:**
-
-- ✅ Complete
+- ✅ Complete and verified
 - ⏳ In progress
-- ⚠️ Blocked / requires decision
-- ❌ Not started
+- ⚠️ Partial / has issues
+- ❌ Not started or blocked

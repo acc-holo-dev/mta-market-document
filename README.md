@@ -1,8 +1,8 @@
 # MTA Market — Documentation & Audit Repository
 
 **Project status:** MVP / Pre-Production  
-**Main repo:** https://github.com/acc-holo-dev/mta-market  
-**Guard module:** https://github.com/acc-holo-dev/mta-guard-module
+**Main repo:** https://github.com/acc-holo-dev/mta-market-site  
+**DRM module:** https://github.com/acc-holo-dev/mta-market-module
 
 ---
 
@@ -19,8 +19,8 @@ This repository contains comprehensive audit findings and project documentation 
 
 ## Quick Links
 
-- **Main implementation:** [github.com/acc-holo-dev/mta-market](https://github.com/acc-holo-dev/mta-market)
-- **DRM client module:** [github.com/acc-holo-dev/mta-guard-module](https://github.com/acc-holo-dev/mta-guard-module)
+- **Main implementation:** [github.com/acc-holo-dev/mta-market-site](https://github.com/acc-holo-dev/mta-market-site)
+- **DRM client module:** [github.com/acc-holo-dev/mta-market-module](https://github.com/acc-holo-dev/mta-market-module)
 - **Project documentation:** `/document` folder in main repo
 
 ---
@@ -39,7 +39,7 @@ The audit identifies:
 **Strengths:**
 - Solid modular monolith architecture
 - Good domain model (Purchase ≠ License ≠ Payment)
-- Real MTA integration via mta-guard-module
+- Real MTA integration via mta-market-module
 - Docker + CI/CD operational
 
 **Critical gaps:**
@@ -125,8 +125,8 @@ See [PROJECT_STATUS.md](PROJECT_STATUS.md) for complete gates.
 ## Contributing
 
 This is a documentation-only repository. For code contributions:
-- Main implementation → [github.com/acc-holo-dev/mta-market](https://github.com/acc-holo-dev/mta-market)
-- DRM module → [github.com/acc-holo-dev/mta-guard-module](https://github.com/acc-holo-dev/mta-guard-module)
+- Main implementation → [github.com/acc-holo-dev/mta-market-site](https://github.com/acc-holo-dev/mta-market-site)
+- DRM module → [github.com/acc-holo-dev/mta-market-module](https://github.com/acc-holo-dev/mta-market-module)
 
 For audit feedback or documentation improvements, open an issue in this repo.
 

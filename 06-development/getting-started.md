@@ -2,12 +2,12 @@
 
 > **DRM-защищённая площадка продаж серверных ресурсов для MTA:SA**
 
-[![CI](https://github.com/acc-holo-dev/mta-market/actions/workflows/ci.yml/badge.svg)](https://github.com/acc-holo-dev/mta-market/actions/workflows/ci.yml)
+[![CI](https://github.com/acc-holo-dev/mta-market-site/actions/workflows/ci.yml/badge.svg)](https://github.com/acc-holo-dev/mta-market-site/actions/workflows/ci.yml)
 
 ## 🏗️ Архитектура монорепозитория
 
 ```
-mta-market/
+mta-market-site/
 ├── apps/
 │   ├── web/          Next.js 15 фронтенд (React 19 + TypeScript + Tailwind)
 │   └── server/       Node.js бэкенд (Express + TypeScript)
@@ -115,7 +115,7 @@ docker-compose down -v
 
 ## 🔗 Связанные репозитории
 
-- [mta-guard-module](https://github.com/acc-holo-dev/mta-guard-module) — C++ модуль Market Manager (DRM-движок для MTA-серверов)
+- [mta-market-module](https://github.com/acc-holo-dev/mta-market-module) — C++ модуль Market Manager (DRM-движок для MTA-серверов)
 
 ## 📄 Лицензия
 

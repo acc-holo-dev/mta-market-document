@@ -112,8 +112,8 @@
 
 ## 🔗 External Resources
 
-- **Implementation:** [github.com/acc-holo-dev/mta-market](https://github.com/acc-holo-dev/mta-market)
-- **DRM Module:** [github.com/acc-holo-dev/mta-guard-module](https://github.com/acc-holo-dev/mta-guard-module)
+- **Implementation:** [github.com/acc-holo-dev/mta-market-site](https://github.com/acc-holo-dev/mta-market-site)
+- **DRM Module:** [github.com/acc-holo-dev/mta-market-module](https://github.com/acc-holo-dev/mta-market-module)
 - **MTA Wiki:** [wiki.multitheftauto.com](https://wiki.multitheftauto.com/)
 - **YooKassa API:** [yookassa.ru/developers](https://yookassa.ru/developers)
 
