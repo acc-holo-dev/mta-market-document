@@ -87,7 +87,30 @@
 **Дата:** сентябрь 2026  
 **Решение:** `String @id @default(cuid())` вместо autoincrement.  
 **Контекст:** предсказуемые Int и путаница parseInt.  
-**Последствие:** чинить оставшиеся Int FK (`Review`, `FinancialTransaction`).
+**Последствие:** чинить оставшиеся Int FK (`Review`, `FinancialTransaction`).  
+⚠️ Дефолт пересмотрен в ADR-017; Int FK исправлены в Block 1 (2026-09-08).
+
+## ADR-016: DRM v1 activation deprecated и заблокирован
+
+**Дата:** 2026-09-08 (PLAN Block 1, TASK A-007)  
+**Решение:** вариант A — v1 activation protocol (`POST /drm/activate`, `POST /drm/verify`) возвращает `410 Gone`; единственный activation protocol — DRM v2 (`/drm/v2/*`). Management-эндпоинты v1 (`GET /drm/my-licenses`, `DELETE /drm/revoke/:licenseId`) остаются активными: они аутентифицированы, проверяют ownership и не являются activation protocol.  
+**Контекст:** v1 использовал фейковые keypair (`crypto.randomBytes` как «ключи»), возвращал private key клиенту по HTTP и использовал private key как bearer-секрет в `/verify`; кроме того, v1 несовместим с актуальной схемой (поля `privateKey` у `Installation` больше нет). Одновременные два активных activation protocol запрещены политикой плана.  
+**Последствия:** существующие v1-инсталляции (их нет — проект до production) должны перейти на v2; native module (Stage-0 spike) целится в v2.  
+**Альтернатива:** B) read-only compatibility bridge — отвергнута: нет production-инсталляций, а v1 небезопасен по построению.
+
+## ADR-017: Дефолт PK — uuid() вместо cuid()
+
+**Дата:** 2026-09-08 (PLAN Block 1)  
+**Решение:** `String @id @default(uuid())` — PSL-диалект «SQL PSL provider v1» (Prisma 8 RC) не принимает `cuid()` как default-функцию. Существенное свойство ADR-015 (нечисловые, негадаемые строковые PK) сохраняется: UUID v4 генерируется Prisma до записи.  
+**Последствие:** `middleware/validateCuid` валидирует UUID-формат; ID домена — строки, numeric casts запрещены (TASK A-004).  
+**Альтернатива:** генерация ID в приложении — отвергнута как более инвазивная.
+
+## ADR-018: Payment.purchaseId вместо Payment.orderId до Phase C
+
+**Дата:** 2026-09-08 (PLAN Block 1)  
+**Решение:** `Payment.purchaseId String @unique` — мост до появления Order aggregate (C-012/E-007). `Purchase.orderItemId` сделан optional по той же причине.  
+**Контекст:** модели `Order`/`OrderItem` никогда не существовали в скомпилированном контракте; код платежей фактически привязывает payment к purchase.  
+**Последствие:** при Phase C поле переименовывается/перепривязывается к OrderItem/Order по documented migration path.
 
 ## Как добавить
 
