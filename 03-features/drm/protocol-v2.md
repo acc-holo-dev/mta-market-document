@@ -1,522 +1,209 @@
-# DRM Protocol v2 Specification
+status: current
+version: 1.0
+last_verified: 2026-09-09
 
-**Version:** 2.0  
-**Status:** Implementation Complete  
-**Last Updated:** 2026-09-07
+# DRM Protocol v2 — frozen protocol contract
 
----
+**Source of truth:** `mta-market-site/apps/server/src/lib/drm/protocol.ts`
+(constants) and `apps/server/src/lib/drm/types.ts` (wire types). This document
+is the human-readable mirror (P-008). If it disagrees with those files, the
+files win and this document must be corrected. Changing any constant here or
+there requires a protocol version bump (v3) — never an in-place edit.
 
-## Overview
+Client implementation: `mta-market-module/source/drm/**` (inventory:
+`mta-market-module/docs/H-001-inventory.md`).
 
-DRM Protocol v2 replaces symmetric key distribution with asymmetric cryptography using Ed25519 digital signatures. Each installation generates its own keypair, and the server issues signed time-limited leases that bind licenses to specific installations and artifacts.
+## Frozen constants
 
----
+| Constant | Value | Name in `protocol.ts` |
+|---|---|---|
+| Protocol version | `2` (supported: `[2]`) | `DRM_PROTOCOL_VERSION`, `DRM_SUPPORTED_PROTOCOL_VERSIONS` |
+| Lease TTL | `604800` s (7 days, renewable via fresh nonce at `/drm/v2/activate`) | `LEASE_DURATION_SECONDS` |
+| Clock skew tolerance | `90` s (expiry and issuance validation) | `CLOCK_SKEW_SECONDS` |
+| Challenge | 32 random bytes, base64, single use | `CHALLENGE_BYTES` |
+| Nonce | 32 random bytes, hex-encoded (64 chars), single use | `NONCE_BYTES`, `NONCE_HEX_LENGTH` |
+| DEK algorithm | `aes-256-gcm` | `DEK_ALGORITHM` |
+| DEK size | 32 bytes | `DEK_KEY_BYTES` |
+| DEK wrap nonce | 12 bytes (GCM) | `DEK_WRAP_NONCE_BYTES` |
+| Server master key env | `DRM_MASTER_KEY` (base64, 32 bytes; never exposed to clients) | `DRM_MASTER_KEY_ENV` |
 
-## Key Differences from v1
+## Canonical JSON (signature input)
 
-| Feature | v1 (Symmetric) | v2 (Asymmetric) |
-|---------|----------------|-----------------|
-| **Identity** | Hardware fingerprint | Ed25519 keypair |
-| **Key Distribution** | Server sends symmetric key | Client generates keypair |
-| **Authentication** | None | Challenge/response |
-| **License Format** | Encrypted artifact | Signed lease |
-| **Revocation** | Difficult | Revoke installation |
-| **Replay Protection** | None | Nonce-based |
-| **Artifact Binding** | None | SHA-256 hash in lease |
+The signature input for leases and the canonical serializer in the module are
+defined by `canonicalJSON()` in `apps/server/src/lib/artifact/crypto.ts` and
+byte-matched by `source/drm/json.cpp` in the module:
 
----
+- keys sorted recursively;
+- no whitespace;
+- UTF-8 bytes;
+- the `signature` field is stripped from the payload being signed;
+- number tokens preserved verbatim (no re-formatting).
 
-## Protocol Flow
+Lease signing bytes: canonical JSON of the lease payload (see
+`leaseSigningBytes()` in `apps/server/src/lib/drm/crypto.ts`).
+DEK possession proof: Ed25519 signature over the base64 encoding of the ASCII
+bytes `dek:<versionId>:<nonce>`.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. Installation Registration                                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Client generates Ed25519 keypair (client-side)                 │
-│         ↓                                                        │
-│  Client → POST /drm/v2/installations                            │
-│         {                                                        │
-│           "publicKey": "MCowBQYDK2VwAyEA...",                   │
-│           "mtaVersion": "1.5.9",                                │
-│           "moduleVersion": "0.5.0"                              │
-│         }                                                        │
-│         ↓                                                        │
-│  Server ← 201 Created                                           │
-│         {                                                        │
-│           "installationId": "clx...",                           │
-│           "challenge": "base64_encoded_random_32_bytes"         │
-│         }                                                        │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+## Keys
 
-┌─────────────────────────────────────────────────────────────────┐
-│ 2. Challenge Verification                                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Client signs challenge with privateKey (Ed25519 signature)     │
-│         ↓                                                        │
-│  Client → POST /drm/v2/installations/:id/verify                 │
-│         {                                                        │
-│           "challengeResponse": "base64_encoded_signature"       │
-│         }                                                        │
-│         ↓                                                        │
-│  Server verifies signature with stored publicKey                │
-│         ↓                                                        │
-│  Server ← 200 OK                                                │
-│         {                                                        │
-│           "verified": true,                                     │
-│           "installationId": "clx..."                            │
-│         }                                                        │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+| Key | Where generated | Where stored |
+|---|---|---|
+| Installation Ed25519 keypair | client (module) | private key only in the module key store (`source/drm/key_store.cpp`: AES-256-GCM encrypted file, 0600, machine-derived key on Linux / DPAPI on Windows); public key registered server-side. INV-010: the private key never leaves the installation. |
+| Server signing key (Ed25519) | server CLI (`pnpm drm:keygen` / `createServerSigningKey()`) | public key in DB (`ServerSigningKey`, status ACTIVE/PREVIOUS); private key in `DRM_SERVER_PRIVATE_KEY` env, returned exactly once |
+| Server master key (AES-256-GCM) | operator | `DRM_MASTER_KEY` env; wraps per-version DEKs (`ArtifactEncryption`) |
 
-┌─────────────────────────────────────────────────────────────────┐
-│ 3. License Activation                                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Client generates random nonce                                  │
-│         ↓                                                        │
-│  Client → POST /drm/v2/activate                                 │
-│         {                                                        │
-│           "licenseId": "clx...",                                │
-│           "installationId": "clx...",                           │
-│           "nonce": "64_hex_chars"                               │
-│         }                                                        │
-│         ↓                                                        │
-│  Server verifies ownership                                      │
-│  Server generates lease                                         │
-│  Server signs lease with server's privateKey                    │
-│         ↓                                                        │
-│  Server ← 200 OK (SignedLease)                                  │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+A lease carries `serverKeyId`; clients verify the signature against the
+trusted key set (`GET /drm/v2/public-keys` — ACTIVE + PREVIOUS). A lease
+signed by a REVOKED/EXPIRED server key is rejected
+(`DRM_SERVER_KEY_REVOKED`).
 
-┌─────────────────────────────────────────────────────────────────┐
-│ 4. Lease Verification (Client-Side)                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Client fetches server's publicKey (once, cached)               │
-│  Client verifies lease signature                                │
-│  Client checks:                                                 │
-│    ✓ Signature valid                                            │
-│    ✓ Not expired                                                │
-│    ✓ Nonce matches                                              │
-│    ✓ Artifact hash matches                                      │
-│    ✓ Resource/version matches                                   │
-│         ↓                                                        │
-│  If valid: Run resource                                         │
-│  If invalid: Deny execution                                     │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+Rotation (`rotateServerSigningKey()`): ACTIVE → PREVIOUS (still trusted for
+existing leases), new keypair becomes ACTIVE, new private key installed into
+`DRM_SERVER_PRIVATE_KEY` by the operator. Tested in
+`mta-market-site/tests/drm-g6.test.ts`.
 
-┌─────────────────────────────────────────────────────────────────┐
-│ 5. Heartbeat (Optional)                                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Client → POST /drm/v2/heartbeat (periodic)                     │
-│         {                                                        │
-│           "installationId": "clx...",                           │
-│           "resourceId": "clx...",                               │
-│           "uptime": 3600                                        │
-│         }                                                        │
-│         ↓                                                        │
-│  Server ← 200 OK                                                │
-│         {                                                        │
-│           "acknowledged": true,                                 │
-│           "leaseValid": true,                                   │
-│           "shouldUpdate": false                                 │
-│         }                                                        │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+## Endpoints (machine API, mounted at `/drm`)
 
----
+From `DRM_ENDPOINTS` in `protocol.ts`, implemented in
+`apps/server/src/routes/drm/v2.ts`:
 
-## API Endpoints
+| Endpoint | Method | Auth | Purpose |
+|---|---|---|---|
+| `/drm/v2/public-keys` | GET | public | trusted server keys (`{keys: [{keyId, publicKey, status}], algorithm: "EdDSA", keyType: "ED25519"}`) |
+| `/drm/v2/installations` | POST | browser-authenticated license owner (INV-007), strict rate limit | register installation: `{publicKey, licenseId, mtaVersion, moduleVersion, serverSerial?, serverName?}` → `{installationId, challenge}` |
+| `/drm/v2/installations/:id/verify` | POST | machine, strict rate limit | prove possession: `{installationId, challengeResponse}` (Ed25519 signature over raw challenge bytes) |
+| `/drm/v2/activate` | POST | machine (verified installation), strict rate limit | `{licenseId, installationId, nonce}` → signed lease |
+| `/drm/v2/heartbeat` | POST | machine (active installation), standard rate limit | `{installationId, resourceId, uptime, lastError?}` → `{acknowledged, leaseValid, shouldUpdate, updateVersionId?}` |
+| `/drm/v2/leases/:installationId/:resourceId` | GET | machine | latest unexpired signed lease, or null |
+| `/drm/v2/versions/:versionId/dek` | POST | machine (lease holder), strict rate limit | `{installationId, nonce, signature}` → `{dekId, dek, algorithm}` |
 
-### GET /drm/v2/public-key
+Note: `GET /drm/v2/public-key` (singular) also exists in the route file and
+returns only the ACTIVE key; the canonical protocol map names
+`/drm/v2/public-keys` (plural, rotation-aware). Clients should use the plural
+endpoint. This asymmetry is recorded as a known cleanup candidate — the frozen
+map in `protocol.ts` is authoritative.
 
-Get server's public Ed25519 key for lease verification.
+## Wire types (`apps/server/src/lib/drm/types.ts`)
 
-**Response:**
-```json
-{
-  "publicKey": "MCowBQYDK2VwAyEA...",
-  "algorithm": "EdDSA",
-  "keyType": "ED25519"
-}
-```
+- `InstallationRegistration { publicKey, licenseId, mtaVersion, moduleVersion, serverSerial?, serverName? }`
+- `InstallationResponse { installationId, challenge }` — challenge: base64, 32 bytes, single use
+- `ChallengeVerification { installationId, challengeResponse }`
+- `LeaseRequest { licenseId, installationId, nonce }` — nonce: 64 hex chars
+- `SignedLease` / `LeasePayload { protocolVersion: 2, licenseId, installationId, resourceId, resourceVersionId, artifactHash, issuedAt, expiresAt, nonce, serverKeyId, capabilities, signature }`
+- `HeartbeatRequest / HeartbeatResponse`
+- Capabilities: `'run' | 'update' | 'debug' | 'export'` (server currently issues `['run','update']`)
 
-**Caching:** Client should cache this key.
+## Signed lease (canonical JSON of the payload minus `signature`)
 
----
-
-### POST /drm/v2/installations
-
-Register new installation with public key.
-
-**Request:**
-```json
-{
-  "publicKey": "MCowBQYDK2VwAyEA...",
-  "mtaVersion": "1.5.9",
-  "moduleVersion": "0.5.0",
-  "serverSerial": "optional",
-  "serverName": "optional"
-}
-```
-
-**Response (201):**
-```json
-{
-  "installationId": "clx3u7o1q0003qzrm8j7m2n5s",
-  "challenge": "base64_encoded_32_bytes"
-}
-```
-
-**Errors:**
-- `400 INVALID_REQUEST` - Missing required fields
-- `409 INSTALLATION_EXISTS` - Public key already registered
-- `500 SERVER_ERROR` - Internal error
-
----
-
-### POST /drm/v2/installations/:id/verify
-
-Verify installation with signed challenge response.
-
-**Request:**
-```json
-{
-  "challengeResponse": "base64_encoded_signature"
-}
-```
-
-**Response (200):**
-```json
-{
-  "verified": true,
-  "installationId": "clx3u7o1q0003qzrm8j7m2n5s"
-}
-```
-
-**Errors:**
-- `400 INVALID_REQUEST` - Missing challengeResponse
-- `401 DRM_INVALID_CHALLENGE_RESPONSE` - Invalid signature
-- `404 DRM_INSTALLATION_NOT_FOUND` - Installation not found
-- `500 SERVER_ERROR` - Internal error
-
----
-
-### POST /drm/v2/activate
-
-Activate license and receive signed lease.
-
-**Request:**
-```json
-{
-  "licenseId": "clx3s4m9p0001qzrm6h5k0l3q",
-  "installationId": "clx3u7o1q0003qzrm8j7m2n5s",
-  "nonce": "64_hex_characters_random"
-}
-```
-
-**Response (200):**
 ```json
 {
   "protocolVersion": 2,
-  "licenseId": "clx3s4m9p0001qzrm6h5k0l3q",
-  "installationId": "clx3u7o1q0003qzrm8j7m2n5s",
-  "resourceId": "clx3r2k8n0000qzrm5g4j9k2p",
-  "resourceVersionId": "clx3s4m9p0001qzrm6h5k0l3q",
-  "artifactHash": "a3f2c1b9e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
-  "issuedAt": "2026-09-07T12:00:00.000Z",
-  "expiresAt": "2026-09-14T12:00:00.000Z",
-  "nonce": "64_hex_characters_random",
-  "serverKeyId": "clx3t6n0p0002qzrm7i6l1m4r",
+  "licenseId": "<uuid>",
+  "installationId": "<uuid>",
+  "resourceId": "<uuid>",
+  "resourceVersionId": "<uuid>",
+  "artifactHash": "<64 hex, sha256 of the version artifact>",
+  "issuedAt": "<ISO 8601>",
+  "expiresAt": "<ISO 8601, issuedAt + 604800 s>",
+  "nonce": "<64 hex, single use>",
+  "serverKeyId": "<uuid of the ACTIVE ServerSigningKey>",
   "capabilities": ["run", "update"],
-  "signature": "base64_encoded_Ed25519_signature"
+  "signature": "<base64 Ed25519 over the canonical payload above>"
 }
 ```
 
-**Errors:**
-- `400 INVALID_REQUEST` - Missing fields or invalid nonce format
-- `403 DRM_INSTALLATION_NOT_VERIFIED` - Installation not verified
-- `404 DRM_INSTALLATION_NOT_FOUND` - Installation not found
-- `404 DRM_INVALID_LICENSE` - License not found
-- `409 DRM_NONCE_ALREADY_USED` - Nonce already used (replay)
-- `500 SERVER_ERROR` / `500 SERVER_MISCONFIGURED` - Internal error
-
----
-
-### POST /drm/v2/heartbeat
-
-Record installation heartbeat.
-
-**Request:**
-```json
-{
-  "installationId": "clx3u7o1q0003qzrm8j7m2n5s",
-  "resourceId": "clx3r2k8n0000qzrm5g4j9k2p",
-  "uptime": 3600,
-  "lastError": "optional_error_message"
-}
-```
-
-**Response (200):**
-```json
-{
-  "acknowledged": true,
-  "leaseValid": true,
-  "shouldUpdate": false,
-  "updateVersionId": null
-}
-```
-
----
-
-### GET /drm/v2/leases/:installationId/:resourceId
-
-Get active lease for installation and resource.
-
-**Response (200):**
-```json
-{
-  "protocolVersion": 2,
-  "licenseId": "...",
-  "installationId": "...",
-  ...
-}
-```
-
-**Errors:**
-- `404 LEASE_NOT_FOUND` - No active lease found
-- `500 SERVER_ERROR` - Internal error
-
----
-
-## Signed Lease Format
-
-```typescript
-interface SignedLease {
-  protocolVersion: 2;
-  licenseId: string;
-  installationId: string;
-  resourceId: string;
-  resourceVersionId: string;
-  artifactHash: string;        // SHA-256 of artifact file
-  issuedAt: string;            // ISO 8601 timestamp
-  expiresAt: string;           // ISO 8601 timestamp
-  nonce: string;               // 64 hex characters
-  serverKeyId: string;
-  capabilities: Capability[];  // ["run", "update", "debug", "export"]
-  signature: string;           // Base64 Ed25519 signature
-}
-```
-
-**Signature Covers:**
-- Canonical JSON of lease (excluding signature field)
-- SHA-256 hash of canonical JSON
-
-**Verification Steps:**
-1. Parse lease JSON
-2. Extract signature
-3. Create canonical JSON (sorted keys, no whitespace, no signature field)
-4. Hash canonical JSON with SHA-256
-5. Verify Ed25519 signature with server's public key
-6. Check `expiresAt > now()`
-7. Check `artifactHash` matches downloaded artifact
-8. Check `resourceId` and `resourceVersionId` match expected
-
----
-
-## Nonce Requirements
-
-**Format:** 64 hexadecimal characters (32 bytes)
-
-**Generation:** `crypto.randomBytes(32).toString('hex')`
-
-**Usage:** Each nonce can only be used once. Server maintains nonce table to prevent replay attacks.
-
-**Lifetime:** Nonces expire after successful lease generation or 1 hour (whichever comes first).
-
----
-
-## Security Considerations
-
-### Private Key Security
-
-**Installation Private Key:**
-- Generated client-side
-- Never transmitted to server
-- Stored securely in MTA module memory
-- Used only for signing challenges
-
-**Server Private Key:**
-- Generated once during setup
-- Stored in ENV, KMS, or Vault
-- Never exposed to clients
-- Used only for signing leases
-
-### Replay Protection
-
-1. **Nonce:** Each activation requires unique nonce
-2. **Nonce Table:** Server tracks used nonces
-3. **Expiry:** Old nonces are periodically cleaned
-
-### Revocation
-
-**Installation Revocation:**
-```sql
-UPDATE installations 
-SET status = 'REVOKED', 
-    revokedAt = now(), 
-    revokedBy = 'admin-id',
-    revocationReason = 'Security incident'
-WHERE id = 'installation-id';
-```
-
-**Effect:** Future lease requests will be denied.
-
-**Existing Leases:** Continue working until expiry (grace period).
-
-### Grace Period
-
-When server is temporarily unavailable:
-1. Client continues with valid lease until expiry
-2. Client logs warning
-3. Client retries with exponential backoff
-4. If lease expires during outage, controlled degradation
-
----
-
-## Error Codes
-
-| Code | HTTP | Description |
-|------|------|-------------|
-| `DRM_INVALID_LICENSE` | 404 | License not found or invalid |
-| `DRM_INSTALLATION_NOT_FOUND` | 404 | Installation not found |
-| `DRM_INSTALLATION_NOT_VERIFIED` | 403 | Challenge not verified |
-| `DRM_INSTALLATION_REVOKED` | 403 | Installation revoked |
-| `DRM_INVALID_CHALLENGE_RESPONSE` | 401 | Challenge signature invalid |
-| `DRM_NONCE_ALREADY_USED` | 409 | Nonce already used (replay) |
-| `DRM_NONCE_EXPIRED` | 400 | Nonce expired |
-| `DRM_LEASE_EXPIRED` | 403 | Lease expired |
-| `DRM_INVALID_SIGNATURE` | 401 | Lease signature invalid |
-| `DRM_PROTOCOL_VERSION_MISMATCH` | 400 | Unsupported protocol version |
-| `DRM_ARTIFACT_HASH_MISMATCH` | 400 | Artifact hash mismatch |
-| `DRM_INSUFFICIENT_CAPABILITIES` | 403 | Capability not granted |
-| `DRM_SERVER_KEY_REVOKED` | 500 | Server key revoked |
-
----
-
-## Compatibility Matrix
-
-| Site Version | API | DRM Protocol | Module Version | Artifact Format |
-|--------------|-----|--------------|----------------|-----------------|
-| 0.1.x        | v1  | v1           | 0.1.x - 0.3.x  | v1              |
-| 0.2.x        | v1  | v2           | >= 0.4.x       | v1              |
-| 1.0.x        | v2  | v2           | >= 0.5.x       | v2              |
-
----
-
-## Migration from v1 to v2
-
-### Server-Side
-
-1. Deploy v2 endpoints alongside v1
-2. Keep v1 endpoints for backward compatibility
-3. Generate server signing keypair
-4. Configure `DRM_SERVER_PRIVATE_KEY` environment variable
-
-### Client-Side
-
-1. Update module to v0.5.0+
-2. Generate installation keypair on first run
-3. Register installation with server
-4. Verify challenge
-5. Request lease instead of symmetric key
-6. Verify lease signature
-7. Cache server public key
-
-### Gradual Rollout
-
-1. Deploy v2 server (supports both v1 and v2)
-2. Release module update (optional for users)
-3. Monitor v2 adoption
-4. After 90% adoption, deprecate v1
-5. After 180 days, remove v1 endpoints
-
----
-
-## Testing
-
-### Unit Tests
-
-```bash
-pnpm test tests/drm-crypto.test.ts
-```
-
-### Integration Tests
-
-```bash
-# Generate server key
-pnpm drm:keygen
-
-# Generate test installation
-pnpm drm:test-installation
-
-# Start server
-pnpm dev
-
-# Test registration
-curl -X POST http://localhost:3001/drm/v2/installations \
-  -H "Content-Type: application/json" \
-  -d '{"publicKey":"...","mtaVersion":"1.5.9","moduleVersion":"0.5.0"}'
-
-# Sign challenge (client-side)
-# ...
-
-# Verify challenge
-curl -X POST http://localhost:3001/drm/v2/installations/:id/verify \
-  -H "Content-Type: application/json" \
-  -d '{"challengeResponse":"..."}'
-
-# Activate license
-curl -X POST http://localhost:3001/drm/v2/activate \
-  -H "Content-Type: application/json" \
-  -d '{"licenseId":"...","installationId":"...","nonce":"..."}'
-```
-
----
-
-## Performance
-
-| Operation | Time |
-|-----------|------|
-| Keypair generation | ~1ms |
-| Challenge generation | <1ms |
-| Challenge signing | 2-5ms |
-| Challenge verification | 3-7ms |
-| Lease signing | 2-5ms |
-| Lease verification | 3-7ms |
-| Nonce generation | <1ms |
-
-**Network Overhead:** +2 roundtrips vs v1 (registration + verification)
-
-**Storage:** ~1KB per installation, ~2KB per lease
-
----
-
-## References
-
-- [Ed25519 Specification](https://ed25519.cr.yp.to/)
-- [PROMNT.md Section 14: DRM v2](../../../PROMNT.md#14-drm-v2)
-- [TASK-020 Report](../../08-reports/task-020-drm-v2.md)
-
----
-
-**Status:** ✅ IMPLEMENTATION COMPLETE  
-**Last Updated:** 2026-09-07  
-**Next:** Module integration (C++)
+Binding rules (invariants):
+
+- INV-011: the lease binds installation + license + resource/version. The
+  installation is permanently bound to its license at registration; activation
+  with any other license is rejected (`DRM_LICENSE_INSTALLATION_MISMATCH`).
+- The nonce is single-use server-wide (`Lease.nonce` unique; reuse →
+  `DRM_NONCE_ALREADY_USED`, HTTP 409) — replay protection.
+- `artifactHash` binds the lease to the exact signed artifact.
+
+## Ownership and activation flow
+
+1. Owner authenticates in the browser and registers an installation for a
+   license they own (license → purchase → `buyerId` == authenticated user;
+   INV-007). License must be ACTIVE.
+2. Server issues a single-use challenge.
+3. Module signs the raw challenge bytes; server verifies → installation
+   becomes ACTIVE (possession of the private key proven).
+4. Module activates with a fresh nonce → server checks: installation ACTIVE
+   and not revoked, license ACTIVE, license == bound license, no YANKED
+   release (`releaseStatus: YANKED` blocks **new** lease issuance, I-005/ADR-001),
+   version has an `ArtifactSignature` — then signs and stores the lease.
+5. Renewal = activation again with a new nonce before expiry.
+6. Heartbeats update `lastHeartbeat` and report lease validity.
+7. DEK release: for an encrypted version, the module proves possession
+   (Ed25519 over `dek:<versionId>:<nonce>`) and must hold an unexpired lease
+   for that exact version; the server unwraps the DEK under `DRM_MASTER_KEY`
+   and releases the raw DEK over TLS. The master key never leaves the server.
+
+## DEK envelope (G-005)
+
+- Per resource version: unique 32-byte DEK (`ArtifactEncryption.dekId`).
+- Payload encryption: AES-256-GCM, fresh 12-byte nonce, stored as
+  `{algorithm, nonce, tag, ciphertext}`; authenticated — any payload
+  tampering fails decryption.
+- DEK wrapping: AES-256-GCM under `DRM_MASTER_KEY`; stored as
+  `{wrappedDek, wrapNonce, wrapTag}`; unwrap server-side only
+  (`apps/server/src/lib/artifact/encryption.ts`).
+
+## Revocation policy (ADR-001)
+
+See `mta-market-site/docs/adr/ADR-001-drm-lease-revocation.md`. Summary:
+
+- **Data plane — expire-at-lease-end.** A lease signed before revocation
+  stays cryptographically valid until its natural `expiresAt` (+90 s skew).
+  Rationale: signed against a then-valid entitlement; avoids killing running
+  MTA servers mid-session; residual access window ≤ remaining TTL (≤ 7 days).
+- **Management plane — immediate cutoff.** After `INSTALLATION_REVOKED`:
+  new activation → 403 `DRM_INSTALLATION_REVOKED`; challenge verification and
+  heartbeats → 403.
+- **Faster cutoff:** revoke the installation AND rotate/revoke the server
+  signing key; leases verifiable only by a revoked server key fail with
+  `DRM_SERVER_KEY_REVOKED`.
+- YANKED version (I-005): blocks **new** lease issuance; existing leases run
+  to natural expiry.
+
+## Error codes (`DRM_ERROR_CODES` in `types.ts`)
+
+| Code | Meaning | HTTP (route mapping) |
+|---|---|---|
+| `DRM_INVALID_LICENSE` | license missing/invalid | 404 |
+| `DRM_LICENSE_NOT_OWNED` | authenticated user does not own the license (INV-007) | 403 |
+| `DRM_LICENSE_INSTALLATION_MISMATCH` | activation for a license the installation is not bound to (INV-011) | 403 |
+| `DRM_INSTALLATION_NOT_FOUND` | unknown installation | 404 |
+| `DRM_INSTALLATION_NOT_VERIFIED` | challenge not verified / not ACTIVE | 403 |
+| `DRM_INSTALLATION_REVOKED` | installation revoked | 403 |
+| `DRM_INVALID_CHALLENGE_RESPONSE` | wrong key signed the challenge | 401 |
+| `DRM_NONCE_ALREADY_USED` | nonce replay | 409 |
+| `DRM_NONCE_EXPIRED` | nonce outside validity window | — (reserved) |
+| `DRM_LEASE_EXPIRED` | lease past `expiresAt` + skew | — (client verification) |
+| `DRM_INVALID_SIGNATURE` | lease/DEK proof signature invalid | 401 |
+| `DRM_PROTOCOL_VERSION_MISMATCH` | unsupported protocol version | — (reserved) |
+| `DRM_ARTIFACT_HASH_MISMATCH` | version/artifact binding failure | 404 |
+| `DRM_INSUFFICIENT_CAPABILITIES` | lease does not cover the requested version (incl. YANKED gate) | 403 |
+| `DRM_SERVER_KEY_REVOKED` | signing key revoked/expired | — (client verification) |
+
+Error envelope: `{"error": {"code": "<DRM_...>", "message": "..."}}`.
+
+## Deprecation of v1 (A-007)
+
+`POST /drm/activate` and `POST /drm/verify` return **410 Gone**
+(`apps/server/src/routes/drm.ts`). License management endpoints
+(`GET /drm/my-licenses`, `DELETE /drm/installations/:id`) remain. There is no
+dual-activation window and no compatibility bridge.
+
+## Test evidence
+
+- `mta-market-site/tests/drm-v2.test.ts` — full server-side protocol cycle,
+  INV-007/INV-011, nonce reuse rejection, v1 410.
+- `mta-market-site/tests/drm-crypto.test.ts` — challenge/lease crypto,
+  canonical bytes.
+- `mta-market-site/tests/drm-g6.test.ts` — clock skew, key rotation window,
+  DEK release with possession proof, revoke cycle (ADR-001 behavior).
+- `mta-market-module`: `make -f source/drm/Makefile test` — canonical JSON
+  byte-match, Ed25519, AEAD, key store, HTTP client, lease verification
+  (ALL TESTS PASSED, Linux x64, 2026-09-09).

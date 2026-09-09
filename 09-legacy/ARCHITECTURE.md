@@ -1,3 +1,9 @@
+status: historical
+version: 1.0
+last_verified: 2026-09-07
+
+> **HISTORICAL** (P-005/P-006). Superseded structure proposal; never use as current truth. Canonical index: [../00-INDEX.md](../00-INDEX.md).
+
 # MTA Market Documentation Architecture
 
 ## Proposed Structure

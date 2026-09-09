@@ -1,3 +1,9 @@
+status: historical
+version: 1.0
+last_verified: 2026-09-07
+
+> **HISTORICAL** (P-005/P-006). First-generation documentation map; kept as a record only. Canonical index: [../00-INDEX.md](../00-INDEX.md).
+
 # 📚 КАРТА ДОКУМЕНТАЦИИ — MTA Market
 
 > Этот файл — центральная карта. Отсюда попадаете в любой документ проекта.

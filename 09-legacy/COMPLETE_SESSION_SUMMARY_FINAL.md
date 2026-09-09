@@ -1,3 +1,9 @@
+status: historical
+version: 1.0
+last_verified: 2026-09-07
+
+> **HISTORICAL** (P-005/P-006). Session report from 2026-09-07; never use as current truth. Current state: [../01-project/status.md](../01-project/status.md).
+
 # MTA Market — Complete Session Summary
 
 **Date:** 2026-09-07  

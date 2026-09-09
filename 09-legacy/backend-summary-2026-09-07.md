@@ -1,3 +1,9 @@
+status: historical
+version: 1.0
+last_verified: 2026-09-07
+
+> **HISTORICAL** (P-005/P-006). Backend stage summary from 2026-09-07 — its "100% complete" claims are exactly what P-003 forbids; kept as a record only. Current state: [../01-project/status.md](../01-project/status.md).
+
 # MTA Market — Complete Backend Summary 🎉
 
 ## 🚀 Проект завершён на 70%
