@@ -1,29 +1,28 @@
-status: current
-version: 1.1
-last_verified: 2026-09-09
-
 # MTA Market — документация
 
-**Статус:** MVP / не готов к продакшену  
-**Язык канона:** русский (спецификации — английский)  
-**Обновлено:** 2026-09-09
-
-Единственный источник правды по продукту. Код живёт в двух репозиториях:
+Карта этого репозитория. Код живёт в трёх репозиториях:
 
 | Репозиторий | Роль |
 |---|---|
-| [mta-market-site](https://github.com/acc-holo-dev/mta-market-site) | Backend + frontend |
-| [mta-market-module](https://github.com/acc-holo-dev/mta-market-module) | Нативный модуль MTA (SDK + DRM client subsystem) |
+| [mta-market-site](https://github.com/acc-holo-dev/mta-market-site) | Backend (Express/Postgres) + frontend (Next.js) маркетплейса |
+| [mta-market-module](https://github.com/acc-holo-dev/mta-market-module) | Нативный C++ модуль MTA: SDK + DRM client subsystem |
+| **mta-market-document** (этот репозиторий) | Продуктовая документация и Development Plan system |
 
-Карта документов: [00-INDEX.md](00-INDEX.md).  
-Текущее состояние: [01-project/status.md](01-project/status.md).
+## Структура
 
-## Что это
+| Путь | Что там |
+|---|---|
+| [PROJECT.md](PROJECT.md) | **Что такое MTA Market**: продукт, репозитории, роли (buyer/seller/admin), реализованные сценарии, что считается Initial Product Release. Не roadmap и не task list. |
+| [IDEAS/](IDEAS/) | **Идеи на будущее**. Наличие идеи здесь не создаёт обязательство её реализовать. |
+| [DEVELOPMENT/](DEVELOPMENT/) | **Development Plan system**: планы-переходы, текущее состояние, завершённые планы, замороженные контракты. |
+| [DEVELOPMENT/CURRENT.md](DEVELOPMENT/CURRENT.md) | Текущий активный план и состояние продукта — начинать отсюда. |
+| [DEVELOPMENT/COMPLETED/PLAN-001.md](DEVELOPMENT/COMPLETED/PLAN-001.md) | Итоговая запись PLAN-001 (Initial Product Release), приёмка 2026-09-10. |
+| [DEVELOPMENT/REFERENCE/](DEVELOPMENT/REFERENCE/) | Замороженные технические контракты (DRM Protocol v2, контракт репозиториев, матрица совместимости). Код — источник истины при расхождении. |
 
-Площадка продажи серверных ресурсов для MTA:SA. Покупка ≠ лицензия ≠ платёж. DRM заявлен как cost-raising (массовое копирование усложняется), не как абсолютная защита.
+## Правила
 
-## Честные границы
-
-- Сайт — рабочий MVP: OAuth (Discord/Yandex/Google), каталог, покупки, платежи (ЮKassa) с машиной состояний и возвратами, двойная запись ledger, DRM v2 на стороне сервера, песочница загрузок, 222 теста (2026-09-09). Не продакшен: нет E2E в браузере, нет CI-гейтов тестов/секретов, нет restore-drill.
-- Модуль — зрелый C++ SDK + DRM client subsystem протокола v2 (`source/drm/`), юнит-тесты проходят (Linux x64). E2E против живого сервера и Windows-исполнение ещё не проверены.
-- Деньги и асимметричный DRM в прод не выводить, пока не закрыты гейты [01-project/production-readiness.md](01-project/production-readiness.md).
+- Единственный источник истины по коду — код и тесты. Документация описывает, но не заменяет.
+- Исторические документы предыдущей структуры (каталоги `01…09`) выведены из активного
+  использования и удалены; при необходимости они доступны в git-истории этого репозитория
+  (состояние до коммита реструктуризации).
+- Подробная техническая энциклопедия (API/DB/Deployment) будет создаваться позже, отдельным решением.
