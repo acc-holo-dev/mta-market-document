@@ -19,7 +19,7 @@ Source of truth: `mta-market-site/apps/server/src/lib/providers/payment-yookassa
 
 Provider name in the registry: `YUKASSA`. Capabilities: `payment.create`,
 `payment.verification`, `refund.create`; `payment.cancel` is declared
-**unsupported** (not wired — E-010 note; `cancelPayment` throws).
+**implemented** (2026-09-09): `cancelPayment` -> `POST /v3/payments/{id}/cancel`, exposed as `POST /payments/cancel` (owner/admin, PENDING only, state PENDING -> CANCELED).
 
 ## Outbound API calls
 

@@ -66,11 +66,11 @@ Status vocabulary:
 | Tests (server) | VERIFIED | 21 files / 222 tests passed — `vitest run` against PostgreSQL 16 + Redis 7 (docker), 2026-09-09 | 2026-09-09 |
 | Tests (module) | VERIFIED (unit, Linux x64) | `make -f source/drm/Makefile test` → ALL TESTS PASSED, 2026-09-09 | 2026-09-09 |
 | CI (site repo): lint + type-check, backend/frontend builds, docker push on main | VERIFIED (jobs exist in workflow) | `.github/workflows/ci.yml` (lint, build-backend, build-frontend, docker) | 2026-09-09 |
-| CI (site repo): test job, migration check, secret scan (O-005) | PLANNED | Not present in `.github/workflows/ci.yml`; being added separately | 2026-09-09 |
+| CI (site repo): test job, migration check, secret scan (O-005) | VERIFIED (jobs merged to origin main) | `.github/workflows/ci.yml` (test job: Postgres service + `prisma db update` migration check + vitest; gitleaks; dependency audit) | 2026-09-09 |
 | CI (module repo): Linux + MinGW + MSVC build jobs | VERIFIED (jobs exist in workflow) | `mta-market-module/.github/workflows/ci.yml` | 2026-09-09 |
 | Release channels: stable / beta / legacy (R-003) | PLANNED | No channel model in code; current rollback primitive is YANK — see [05-operations/release-channels.md](../05-operations/release-channels.md) | 2026-09-09 |
 | Crypto payments (E-010 registry readiness) | PLANNED | `src/lib/paymentProvider.ts` registry admits new providers; no crypto provider implementation exists | 2026-09-09 |
-| Backup automation matching O-003 target policy | IMPLEMENTED_UNVERIFIED | `scripts/backup.sh` (manual pg_dump + uploads tar + unencrypted `.env` copy, 7-day local retention); gaps documented in [05-operations/backup.md](../05-operations/backup.md) | 2026-09-09 |
+| Backup automation matching O-003 target policy | VERIFIED (script rewritten + bash -n; no live restore drill) | `scripts/backup.sh`: `.env` encrypted only (BACKUP_ENCRYPTION_KEY, skipped otherwise), retention 30d, SHA-256 manifest; restore drill still to be executed | 2026-09-09 |
 
 ## Production readiness
 

@@ -50,7 +50,7 @@ where it falls short.
     age/age-encrypted file in the secrets vault) explicitly, or accept
     re-encryption of artifacts at re-publication. This trade-off must be an
     explicit operator decision, not an accident.
-- `scripts/backup.sh` currently copies `.env` **unencrypted** into the backup
+- RESOLVED 2026-09-09: `scripts/backup.sh` now backs up `.env` **encrypted** (AES-256 via `BACKUP_ENCRYPTION_KEY`; skipped with a warning when unset). Historical finding:
   directory — this violates the rule above. Until the script is fixed, the
   backup directory must be treated as secret-bearing: 0600/0700 perms,
   encrypted off-host shipping, and exclusion from any broader storage
@@ -91,9 +91,20 @@ topology; the 24 h RPO assumes plain daily dumps.
 
 ## Gaps vs target (2026-09-09)
 
-1. Retention in `scripts/backup.sh` is **7 days**, not 30.
+1. RESOLVED 2026-09-09: retention is now **30 days** (`BACKUP_RETENTION_DAYS`), matching this policy. (Was 7 days.)
 2. Backups stay on-host; no off-host copy job.
 3. `.env` copied unencrypted.
 4. No scheduling in the repo (cron is operator-managed, unwritten).
 5. No executed restore drill; RTO 4 h is an estimate.
 6. No WAL archiving (RPO is bounded by dump frequency).
+
+## Update 2026-09-09 (O-003 gaps closed)
+
+`scripts/backup.sh` was rewritten to match this policy:
+- `.env` is backed up only ENCRYPTED (openssl AES-256-CBC + PBKDF2 under
+  `BACKUP_ENCRYPTION_KEY`); without the key the backup is skipped with a
+  warning — no unencrypted secrets in the backups folder.
+- Retention 30 days (`BACKUP_RETENTION_DAYS`), matching the table above.
+- Every artifact is appended to `SHA256SUMS` for restore verification.
+- A restore-drill execution (restore into a scratch DB and diff) is still to
+  be scheduled — the procedure itself is documented above.
