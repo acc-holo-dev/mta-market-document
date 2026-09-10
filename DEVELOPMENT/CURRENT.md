@@ -1,92 +1,111 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-10 (после выполнения PLAN-003).
+Обновлено: 2026-09-10 (после выполнения PLAN-004).
 
 ## Активный план
 
-Нет. PLAN-003 (Marketplace Core) выполнен и зафиксирован
-(см. [COMPLETED/PLAN-003.md](COMPLETED/PLAN-003.md)).
-
-Следующий цикл открывается новым планом в `ACTIVE/`.
+Нет. PLAN-004 (Production Readiness & Operational Hardening) выполнен и
+зафиксирован (см. [COMPLETED/PLAN-004.md](COMPLETED/PLAN-004.md)) со статусом
+**IMPLEMENTATION COMPLETE — PRODUCTION NOT VERIFIED**: код и процедуры готовы,
+реальные production-проверки (live webhook, Windows DRM, боевой домен,
+restore/rollback drill) требуют deployment-окружения.
 
 ## Состояние продукта
 
-После PLAN-003 MTA Market — полноценный магазин ресурсов:
+MTA Market — полнофункциональный marketplace, подготовленный к production
+deployment (см. [PROJECT.md](../PROJECT.md)). После PLAN-004 дополнительно:
 
-- **Media foundation**: у каждого ресурса может быть обложка и до 8
-  скриншотов (server-side magic-byte валидация, opaque имена, лимиты,
-  публичная раздача через `/media/`). Существующие ресурсы без медиа
-  работают с типографическим fallback.
-- **Seller media UX**: шаг «Оформление» в wizard создания ресурса
-  (обложка + скриншоты с понятными состояниями загрузки, порядком и
-  ошибками), product-like preview перед отправкой на модерацию,
-  редактор оформления в кабинете продавца (для draft/pending).
-- **Resource Card V2 / Resource Detail V2**: товарная карточка с обложкой,
-  продавцом, типом, ценой и рейтингом; product page с галереей (cover +
-  screenshots, лайтбокс с Esc/←/→), seller block, версией в hero.
-- **Seller storefront**: публичная витрина `/sellers/:username` (только
-  APPROVED-профиль или published-ресурсы; непубличные не отдаются).
-- **Discovery**: настоящий серверный search (title/description/продавец),
-  категории по реальным domain-типам, price free/paid, сортировки
-  (popular по завершённым покупкам, rating, newest, price asc/desc) — всё
-  с URL state (`/resources?q=hud&type=SCRIPT&price=free&sort=popular&page=2`).
-- **Homepage**: реальные секции (Новинки / Популярное / Бесплатные) через
-  агрегированный `/resources/homepage` (один запрос), каждая с «Смотреть всё».
-- **Moderation V2**: админ видит полную карточку товара (обложка,
-  скриншоты, версии с artifact/validation статусами) — «товар так, как его
-  увидит покупатель». State machine не менялась.
-- **Seed data**: 16 published-ресурсов всех типов с настоящими обложками/
-  скриншотами (сгенерированные PNG, без stock photos), отзывами и
-  завершёнными покупками (настоящий popularity signal). Идемпотентный
-  `scripts/seed-plan003.ts`.
+- **Media contract**: S3 и локальное хранилище работают по одному контракту
+  (opaque `media-` имена → объект в `media/` префиксе → контролируемая
+  раздача `/media/<name>`; опциональный 302 на CDN через
+  `MEDIA_PUBLIC_BASE_URL`).
+- **Migration formal path**: Prisma 8 migration-пакеты существуют и в git
+  (baseline 215 ops + media 5 ops), `deploy.sh` применяет `db migrate`
+  (formal path) — dev-only `db update` для production запрещён;
+  connection limits задокументированы (пул 10/процесс дефолт).
+- **Production env matrix**: `.env.example` документирует все переменные с
+  разделением dev/staging/prod; startup validation fail-fast (включая
+  `DRM_MASTER_KEY`, который раньше проверялся только в runtime).
+- **Rate limits**: production defaults зафиксированы в prod-compose
+  (AUTH 100/15мин, LOGIN 10/мин/аккаунт и т.д.); dev/E2E значения изолированы.
+- **Redis semantics**: security-critical лимитеры (auth/strict/per-account)
+  fail-closed при outage Redis (503), bulk-limiter — fail-open (решение M-002
+  зафиксировано); Redis содержит только rate-limit счётчики — persistence не
+  требуется (M-003).
+- **Storage**: uploads volume в Dockerfile chown-нут под non-root (P0-фикс —
+  раньше все загрузки в проде падали EACCES); `/uploads/`-локация в nginx
+  удалена (латентный bypass артефактов).
+- **Deploy pipeline**: backup → migrate (`prisma db update`) → deploy exact
+  `IMAGE_TAG` → health-gate (`compose up --wait`) → auto-rollback на
+  предыдущий тег; предыдущая версия образа сохраняется для отката.
+- **CI**: публикация образов гейтится на test+security+lint; audit-gate.sh
+  блокирует high/critical (waivers только с датой ревью); 23 уязвимости
+  закрыты (next 15.5.24, overrides hono/lodash/postcss/sharp и др.); SHA-теги
+  образов `format=long`.
+- **Финансовая целостность**: знак кэша баланса при refund исправлен;
+  settlement идемпотентен (детерминированный transactionId
+  `settle:purchase:<id>`) и дозапускается в alreadyCompleted-ветке;
+  `payment.canceled` закрывает PENDING-заказы (FAILED), поздний succeeded
+  чинит и завершает (provider truth wins); маппинг canceled в reconciliation
+  единый.
+- **Надёжность процесса**: глобальный error-middleware, unhandledRejection
+  handler, graceful shutdown закрывает HTTP/Redis/DB.
+- **nginx**: строгий CSP (`default-src 'self'`, без unsafe-eval), HSTS в
+  443-блоке, Permissions-Policy, security headers не теряются в location,
+  Connection upgrade через map, server_tokens off.
+- **DRM client**: подпись challenge над декодированными байтами (протокольный
+  P0), interop-тест в `tests_drm/main.cpp`.
+- **Документация**: production runbook, database-migrations, backup-restore
+  (RPO 24h/RTO 4h) в `mta-market-site/docs/operations/`.
 
-## Приёмка PLAN-003 (2026-09-10)
+## Приёмка PLAN-004 (2026-09-10)
 
-- Playwright browser E2E: **25/25** (PLAN-001: 12, PLAN-003: 13) на живых
-  dev-серверах (PostgreSQL/Redis в Docker).
-- Backend-тесты: **253/254**. Единственное падение — `startup-policy`
-  acceptance (процессный таймаут в dev-окружении); воспроизводится на
-  дереве до PLAN-003, не является регрессией.
-- `tsc --noEmit` чист у server и web; production build web и server проходит.
-- Нет критических console/runtime ошибок на ключевых страницах.
-
-## Завершённые workstreams (PLAN-003)
-
-Resource Media Foundation (coverUrl + ResourceMedia + upload/serving +
-magic-byte security), Seller Media UX (wizard Presentation step, upload
-states, reordering, preview, media editing), Resource Card V2, Resource
-Detail V2 (gallery/lightbox/seller block), Seller Storefront, Marketplace
-Search, Categories, Filters, Sorting (с реальным popularity), URL state,
-Homepage real sections, Moderation V2 (product presentation + media),
-Mobile drawer, Accessibility, Seed data (16 реалистичных ресурсов),
-Testing (25 E2E), Backend contract (единый /resources query), Documentation.
+- Backend-тесты: **256/256** (было 253/254; `startup-policy` acceptance больше
+  не падает — причина была в dotenv-заполнении JWT_SECRET из dev-.env).
+- Playwright browser E2E: **25/25** на живых dev-серверах
+  (PostgreSQL/Redis в Docker; для запуска Chromium в окружении потребовались
+  локальные системные библиотеки — среда, не продукт).
+- Prisma 8 migration formal path: `migration plan` (baseline 215 ops +
+  media 5 ops) → `db migrate` → `migration status` "Up to date" на живой БД;
+  пакеты и snapshots в git.
+- `tsc --noEmit` чист у server и web; production build server и web проходит;
+  lint чистый.
+- Модуль (C++): `make -f source/drm/Makefile test` — ALL TESTS PASSED, включая
+  новый challenge interop-тест.
+- Security: audit-gate 0 high/critical (23 закрыты обновлениями).
+- Статус плана: **IMPLEMENTATION COMPLETE — PRODUCTION NOT VERIFIED**.
 
 ## Blockers
 
-Нет блокеров основного пользовательского сценария.
+Нет блокеров кода. Перед реальным production-запуском нужно окружение для:
 
-Известные ограничения (не блокируют Marketplace Core, но их нужно помнить):
+1. **YooKassa sandbox→real** (D-007): sandbox-магазин, зарегистрированный
+   webhook URL, тестовый платёж → webhook → license; потом отдельный
+   real-money прогон. Runbook: `docs/operations/production-runbook.md` §12.
+2. **DRM live + Windows** (F-001/F-003): сервер + собранный модуль против
+   staging-лицензионного сервера; Windows-сборка (MSVC/MinGW) и DPAPI
+   key store ни разу не компилировались.
+3. **Restore/rollback drill** (C-005, K-005): прогон на staging-клоне по
+   `docs/operations/backup-restore.md`.
+4. **Домен/TLS/DNS** (S-001..S-006) и внешний uptime-мониторинг (I-004/I-005)
+   — операции на стороне инфраструктуры.
 
-- Медиа хранится локально (S3-путь реализован, но выключен в dev).
-- Rating/popular сортировки капнуты 1000 записей в памяти (dev-масштаб);
-  для production нужна SQL-агрегация.
-- Compatibility/requirements/features показываются только при наличии
-  реальных данных (сейчас их нет — UI не придумывает).
-- Rate limits dev-контура подняты для E2E (AUTH/STANDARD 2000, LOGIN 500,
-  REFRESH 400) — production значения пересмотреть.
-- ЮKassa проверена в dev-контуре (`/payments/:id/simulate`); боевой webhook
-  на реальных деньгах не прогонялся.
-- DRM client: E2E против живого license-сервера и Windows-исполнение не
-  проверены.
-- Пополнение баланса отсутствует (UI честно сообщает).
-- `startup-policy` acceptance-тест падает по процессному таймауту в текущем
-  dev-окружении (воспроизводится и до PLAN-003).
+Известные непокрытые темы (кандидаты в следующий план):
+
+- Payout flow (замкнуть «начислено → выведено», SELLER_PAYOUT) — до реальных
+  выплат.
+- Password reset + смена пароля с инвалидацией сессий (O-001/O-003).
+- SQL-агрегация rating/popular вместо in-memory капа 1000 (R-002) — перед
+  ростом каталога.
+- Шифрование OAuth-токенов в БД (G-01 аудита) или отказ от их хранения.
+- Account deletion/anonymization (P-003).
+- Reconciliation: ledger-аудит (дубли LedgerEntry), retry/backoff шагов,
+  distributed lock при >1 реплики.
+- pg_trgm GIN для ILIKE-поиска + индексы под сортировки (R-003/G-14).
 
 ## Следующий шаг
 
 Сформировать следующий план отдельным решением (автоматически не создаётся).
-Кандидаты — из [IDEAS/IDEAS.md](../IDEAS/IDEAS.md) и честных границ выше:
-типичные темы — прод-контур платежей (webhook + reconciliation на живом
-провайдере), пополнение баланса, наблюдаемость, DRM E2E против живого
-сервера, S3-деплой медиа, SQL-агрегации для rating/popular. Наличие идеи в
-IDEAS не является обязательством её реализовать.
+Логичные кандидаты: production verification plan (пункты blockers выше),
+payout flow, password lifecycle. Наличие темы в списке не является
+обязательством её реализовать.

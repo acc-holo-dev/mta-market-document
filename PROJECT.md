@@ -1,6 +1,6 @@
 # PROJECT — MTA Market
 
-Обновлено: 2026-09-10 (после выполнения PLAN-002 — Product Experience Foundation).
+Обновлено: 2026-09-10 (после выполнения PLAN-004 — Production Readiness & Operational Hardening).
 
 Этот документ описывает текущее состояние MTA Market с точки зрения продукта.
 Это не roadmap и не task list — развитие проекта ведётся через
@@ -146,19 +146,74 @@ typecheck обоих приложений чистый; production build web п�
 в dev-окружении; падает и на дереве до PLAN-002).
 Детали: [DEVELOPMENT/COMPLETED/PLAN-002.md](DEVELOPMENT/COMPLETED/PLAN-002.md).
 
+## Production Readiness (PLAN-004)
+
+**PLAN-004 = Production Readiness & Operational Hardening**: перевод проекта из
+«working development product» в «production-ready service» без новых product
+features. Ключевые результаты:
+
+- **Единый media storage контракт** (B-001/B-002): `/upload/media` в S3-режиме
+  сохраняет объект под `media/<opaque-name>` и возвращает контролируемый
+  публичный путь `/media/<name>` (а не абсолютный S3 URL, ломавший контракт
+  resource media); `GET /media/:name` работает в обоих режимах (стриминг из
+  бакета или 302 на `MEDIA_PUBLIC_BASE_URL`); arbitrary external URLs
+  по-прежнему запрещены, платные артефакты приватны.
+- **Production configuration** (A): полная матрица env (`.env.example` с
+  DEVELOPMENT/STAGING/PRODUCTION-пометками), fail-fast startup validation
+  (включая `DRM_MASTER_KEY`), production rate limits зафиксированы в
+  `docker-compose.prod.yml` и не наследуют dev/E2E значения, cookies/origin
+  policy задокументированы.
+- **Инфраструктура** (H/L/K): `IMAGE_TAG`-пиннинг и хранение предыдущей версии
+  (rollback одной командой), health-gated deploy (`compose up --wait`), шаг
+  миграций в deploy (backup → migrate → deploy → verify), исправленный
+  uploads-volume (chown в Dockerfile), nginx: закрыт латентный `/uploads`
+  bypass, строгий CSP, HSTS, security headers, удалены WebSocket-директивы.
+- **Финансовая целостность** (D/E): исправлен знак кэша баланса продавца при
+  refund (расхождение с double-entry), детерминированный id settlement-транзакции
+  + repair-путь в alreadyCompleted-ветке (закрыто crash-окно между
+  завершением покупки и ledger-начислением), обработка `payment.canceled`
+  (PENDING больше не висит вечно; provider truth wins при позднем succeeded),
+  единый маппинг статусов в reconciliation.
+- **DRM client** (F): исправлен межрепозиторный P0 — клиент подписывал
+  challenge как ASCII base64-текст, сервер ожидает подпись над декодированными
+  байтами; контракт зафиксирован interop-тестом.
+- **Безопасность** (G/K): CI security gate реально блокирует (audit-gate.sh с
+  waivers + TTL), публикация образов гейтится на test/security/lint, все 23
+  high/critical уязвимости закрыты (next 15.5.24 + overrides), CSP/HSTS на
+  уровне nginx, `.dockerignore` исключает вложенные .env из build context.
+- **Надёжность** (M/J): Redis rate-limit fail-closed для security-critical
+  лимитеров, graceful shutdown закрывает HTTP + Redis + DB, глобальный
+  error-middleware (async-ошибка больше не крушит процесс),
+  `unhandledRejection` handler.
+- **Документация** (T/U): runbook `docs/operations/production-runbook.md`,
+  `docs/operations/database-migrations.md`, `docs/operations/backup-restore.md`
+  (RPO 24h / RTO 4h), backup.sh читает uploads из Docker volume.
+
+Приёмка PLAN-004 (2026-09-10): backend-тесты **256/256** (включая исторически
+падавший startup-policy acceptance), browser E2E **25/25**, typecheck server/web
+чистый, production build server/web проходит, lint чистый, модульные тесты
+DRM-клиента **ALL TESTS PASSED** (включая новый challenge interop-тест),
+audit-gate — 0 high/critical. Статус: **IMPLEMENTATION COMPLETE —
+PRODUCTION NOT VERIFIED** (реальные P0-дриллы на живой инфраструктуре —
+sandbox-платёж, Windows DRM, боевой домен — требуют окружения, см. CURRENT.md).
+Детали: [DEVELOPMENT/COMPLETED/PLAN-004.md](DEVELOPMENT/COMPLETED/PLAN-004.md).
+
 ## Честные границы текущего состояния
 
-- Платежи проверены в dev-контуре (`simulate`); боевой контур ЮKassa (живой webhook)
-  не прогонялся на реальных деньгах.
-- DRM client проверен юнит-тестами (Linux x64); E2E против живого license-сервера и
-  Windows-исполнение модуля — не проверены.
-- Пополнение баланса не реализовано (баланс реальный, но без ввода средств); UI честно
-  сообщает о недоступности пополнения.
-- Cover/screenshot поля у ресурса в backend отсутствуют — карточки используют
-  типографический cover; медиа-подсистема не создавалась (осознанное решение PLAN-002).
-- Sorting/rating-based подбор на бэкенде отсутствует — секции homepage формируются
-  из существующих данных (рейтинг считается по отзывам) без новой analytics subsystem.
-- Восстановление после сбоя (restore drill), алертинг и прод-наблюдаемость — не прогонялись.
-- E-mail уведомления существуют, но SMTP в acceptance-контуре отключён.
+- Платежи: webhook/idempotency/state machine покрыты тестами; боевой контур
+  ЮKassa (sandbox → real money, D-007) не прогонялся — нужен staging с
+  sandbox-магазином и зарегистрированным webhook URL.
+- DRM: серверная сторона и клиентские примитивы проверены; live-флоу против
+  работающего сервера и **Windows-исполнение модуля** не выполнялись (F-003) —
+  сборка MSVC/MinGW и DPAPI key store ни разу не компилировались.
+- Payouts: контур «начислено → выведено» не замкнут (нет списания
+  availableAmount и SELLER_PAYOUT) — закрыть до реальных выплат продавцам.
+- Password reset/смена пароля с инвалидацией сессий отсутствуют (O-001/O-003) —
+  при production-запуске пароль-логина нужен минимальный flow.
+- Rating/popular сортировки всё ещё in-memory (кап 1000) — SQL-агрегация
+  необходима перед ростом каталога (R-002).
+- Restore drill, load-тест и внешний uptime-мониторинг — процедуры
+  задокументированы, но не прогонялись на реальном deployment'е.
+- Пополнение баланса не реализовано (UI честно сообщает).
 
 Эти пункты — кандидаты в следующий план (см. [DEVELOPMENT/CURRENT.md](DEVELOPMENT/CURRENT.md)).
