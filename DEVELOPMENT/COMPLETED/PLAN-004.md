@@ -3,8 +3,6 @@
 Дата выполнения: 2026-09-10.
 Финальный статус: **IMPLEMENTATION COMPLETE — PRODUCTION NOT VERIFIED**.
 
-Оригинальная постановка: [PLAN-004-ORIGINAL.md](PLAN-004-ORIGINAL.md).
-
 ---
 
 ## 1. Цель
