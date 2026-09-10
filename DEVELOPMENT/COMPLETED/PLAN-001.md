@@ -58,7 +58,7 @@ tests и typecheck сами по себе недостаточны.
 | K. Product Consistency | Единая русская терминология статусов (`StatusBadge`),backend-машина состояний — единственный источник переходов. |
 | L. Testing | Backend: 254 теста; browser E2E: новый Playwright-набор (12 сценариев) — главный тест плана. |
 | M. Cleanup | Удалены误导ные placeholder-элементы обязательного flow; исправлены реальные дефекты (см. §7). |
-| N. Release Readiness | Воспроизводимый dev-сетап документирован ([README](../README.md)); admin bootstrap; build/typecheck/tests зелёные. |
+| N. Release Readiness | Воспроизводимый dev-сетап документирован ([README](../../README.md)); admin bootstrap; build/typecheck/tests зелёные. |
 | O. Documentation | Репозиторий документации приведён к структуре PROJECT/IDEAS/DEVELOPMENT. |
 
 ## 5. Изменения по репозиториям

@@ -76,7 +76,7 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Приёмка PLAN-005 (2026-09-10)
 
-- Backend-тесты: **336/336** (было 256; +80 PLAN-005: servers 28,
+- Backend-тесты: **337/337** (было 256; +81 PLAN-005: servers 28,
   community 21, reviews 15, news 16; REGRESSION: auth/commerce/DRM/
   payments не сломаны — payments-webhook требует TRUST_PROXY=true при
   локальном прогоне, в CI это дефолт).

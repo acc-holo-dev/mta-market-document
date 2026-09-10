@@ -43,7 +43,7 @@ rewritten.
 
 1. A row appears only after verification (test names + date in Evidence).
 2. Protocol changes: bump to DRM protocol 3, update
-   [drm-protocol-v2.md](drm-protocol-v2.md) (this folder) first, then ship
+   [drm-protocol-v2.md](old_drm-protocol-v2.md) (this folder) first, then ship
    server and module releases that both appear in the new row.
 3. One PREVIOUS server signing key stays trusted across rotations so a site
    upgrade does not invalidate existing leases (G-007).

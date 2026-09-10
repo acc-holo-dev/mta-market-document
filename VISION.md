@@ -312,7 +312,7 @@ Monitoring является частью Server Platform.
 
 без какого-либо подтверждения взаимодействия.
 
-Будущий verification flow:
+Verification flow (реализован в PLAN-005):
 
 Server
 → generate/release review token
@@ -1457,20 +1457,11 @@ Trust должен быть измеряемым.
 Например:
 
 PLAN-005
-Community Core
+Community & Server Foundation — ВЫПОЛНЕН (2026-09-10):
+серверы как hub, форум, новости, токен-отзывы, подписки, уведомления.
 
-или:
-
-PLAN-006
-Server Platform
-
-или:
-
-PLAN-007
-Trust & Guarantee
-
-Но номер и название плана должны определяться только после отдельного
-planning cycle.
+Следующие планы определяются отдельным planning cycle; нумерация
+продолжается с PLAN-006.
 
 ==================================================
 61. ANTI-SCOPE-CREEP

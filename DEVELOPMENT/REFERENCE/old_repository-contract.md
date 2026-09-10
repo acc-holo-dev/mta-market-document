@@ -15,8 +15,8 @@ three release independently. Product overview: [../../PROJECT.md](../../PROJECT.
 - Development Plan system ([../README.md](../README.md)): ACTIVE/COMPLETED plans,
   [CURRENT.md](../CURRENT.md), completed plan records.
 - Frozen cross-repo contracts (this directory): DRM Protocol v2
-  ([drm-protocol-v2.md](drm-protocol-v2.md)), compatibility matrix
-  ([compatibility-matrix.md](compatibility-matrix.md)).
+  ([drm-protocol-v2.md](old_drm-protocol-v2.md)), compatibility matrix
+  ([compatibility-matrix.md](old_compatibility-matrix.md)).
 - Future ideas ([../../IDEAS/IDEAS.md](../../IDEAS/IDEAS.md)) — not commitments.
 
 **Must never own:**
@@ -55,7 +55,7 @@ the code is fixed — a silent divergence is a defect in both.
 **Release independence:** the site deploys independently (docker images from
 CI) as long as it keeps serving the frozen `/drm/v2` contract and the module
 it serves remains within the compatibility matrix
-([compatibility-matrix.md](compatibility-matrix.md)). Old modules are handled
+([compatibility-matrix.md](old_compatibility-matrix.md)). Old modules are handled
 by keeping the previous server signing key trusted during rotation
 (G-007) and by the deprecation policy of `/drm/v1` (410 Gone, A-007).
 
@@ -101,7 +101,7 @@ with a site release iff it appears together in a compatibility-matrix row.
 4. Server key rotation must keep one PREVIOUS signing key trusted so that
    already-issued leases verify across a site release boundary.
 5. Version ranges between site and module are recorded in
-   [compatibility-matrix.md](compatibility-matrix.md); a row is added only
+   [compatibility-matrix.md](old_compatibility-matrix.md); a row is added only
    after verification, never in advance.
 
 ## Cross-repo change protocol

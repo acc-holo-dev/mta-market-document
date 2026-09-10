@@ -6,9 +6,9 @@
 
 | Файл | Что фиксирует |
 |---|---|
-| [drm-protocol-v2.md](drm-protocol-v2.md) | DRM Protocol v2: константы, wire-формат, подписи. Реализован в `mta-market-site/apps/server/src/lib/drm/protocol.ts` и `mta-market-module/source/drm/**`. |
-| [repository-contract.md](repository-contract.md) | Что владеет/не владеет каждый из трёх репозиториев; правила независимых релизов. |
-| [compatibility-matrix.md](compatibility-matrix.md) | Проверенные сочетания версий site ↔ REST ↔ DRM protocol ↔ module. |
+| [drm-protocol-v2.md](old_drm-protocol-v2.md) | DRM Protocol v2: константы, wire-формат, подписи. Реализован в `mta-market-site/apps/server/src/lib/drm/protocol.ts` и `mta-market-module/source/drm/**`. |
+| [repository-contract.md](old_repository-contract.md) | Что владеет/не владеет каждый из трёх репозиториев; правила независимых релизов. |
+| [compatibility-matrix.md](old_compatibility-matrix.md) | Проверенные сочетания версий site ↔ REST ↔ DRM protocol ↔ module. |
 
 **При расхождении кода и документа код выигрывает** — документ корректируется.
 Изменение любого замороженного значения требует bump версии протокола (v3),

@@ -69,7 +69,7 @@ npx tsx scripts/dev-heartbeat.ts
 
 ```sh
 pnpm type-check          # оба приложения
-pnpm --filter @mta-market/server test    # backend tests (336 после PLAN-005)
+pnpm --filter @mta-market/server test    # backend tests (337 после PLAN-005)
 pnpm --filter @mta-market/web build      # production build web
 pnpm test:e2e:admin && pnpm test:e2e     # browser E2E — нужны запущенные серверы
 # PLAN-005: серверы/сообщество держат живыми (heartbeat-симулятор в отдельном терминале)
