@@ -95,6 +95,27 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
   требует Linux-тулчейн (Windows-сборка модуля была и остаётся отдельной
   задачей — см. Blockers PLAN-004).
 
+## Ре-верификация (2026-09-10, аудит документации и кода)
+
+Независимый прогон всей цепочки после аудита трёх репозиториев:
+
+- Backend-тесты: **337/337** на чистой БД (контракт-схема применена
+  формальным путём `prisma db update`, 311 additive ops с нуля).
+- Playwright browser E2E: **37/37** (plan001 12 + plan003 13 + plan005 12)
+  на живых dev-серверах; для запуска Chromium потребовались системные
+  библиотеки (libnss3/libnspr4/libasound2) — установка через
+  LD_LIBRARY_PATH, без root.
+- Модуль: `make -f source/drm/Makefile test` — ALL TESTS PASSED (Linux x64).
+- Migration refs фикс: `refs/db.json` в mta-market-site указывал на
+  промежуточный хеш (771428b3 после 0605_migration) вместо финального
+  состояния после 1051_plan005 (52df04b6) — исправлен (site 6064911).
+- Live-интеграционная цепочка воспроизведена: seed-plan005 → dev-heartbeat
+  (7 серверов каждые 45с) → публичный API показывает ONLINE 436/800,
+  VERIFIED; host/port в публичном payload отсутствуют.
+- Документация приведена к целевой структуре (PROJECT/IDEAS/ACTIVE/
+  COMPLETED; dedup SURFACE-MAP; PLAN-005 spec+record объединены) —
+  коммиты 40561d9, bb9a729.
+
 ## Blockers
 
 Нет блокеров кода. Ограничения/что осталось (в рамках PLAN-005 не было
