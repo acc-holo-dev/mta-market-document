@@ -179,3 +179,7 @@ SURFACE-MAP §62 (future surfaces) — при фиксации PLAN-006 его �
 **Daily Experience Foundation** (кандидат PLAN-006). План создаётся отдельным
 решением по правилам Development Plan system; нумерация продолжается с
 PLAN-006 (VISION §60). CURRENT.md обновлён на этот анализ.
+
+**Обновление (2026-09-11):** решение принято —
+[PLAN-006](ACTIVE/PLAN-006.md) зарегистрирован в `DEVELOPMENT/ACTIVE/`
+на основе этого анализа; реализация не начата.

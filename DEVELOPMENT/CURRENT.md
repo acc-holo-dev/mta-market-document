@@ -1,12 +1,19 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (сопоставительный анализ следующей фазы; продукт —
-состояние после PLAN-005).
+Обновлено: 2026-09-11 (PLAN-006 зарегистрирован; реализация не начата).
 
 ## Активный план
 
-Нет. PLAN-005 (Community & Server Foundation) выполнен и зафиксирован
-(см. [COMPLETED/PLAN-005.md](COMPLETED/PLAN-005.md)) со статусом
+[PLAN-006 — Daily Experience Foundation](ACTIVE/PLAN-006.md)
+(зарегистрирован 2026-09-11). Переход состояния: из «Home = витрина
+маркетплейса» в «Home = живой вход в экосистему» — глобальные LIVE-агрегаты
+из реальных heartbeat-сэмплов, derived activity read-layer (без новой
+доменной сущности), пересборка Home («Сейчас в MTA» / Активность /
+Популярное), сводка «Сейчас / За ночь» в dashboard. Обоснование выбора
+фазы — [NEXT-PHASE.md](NEXT-PHASE.md). Реализация ещё не начата.
+
+Предыдущий план: PLAN-005 (Community & Server Foundation) выполнен и
+зафиксирован ([COMPLETED/PLAN-005.md](COMPLETED/PLAN-005.md)) со статусом
 **IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
 отдельным шагом** (см. Blockers внизу).
 
@@ -141,13 +148,9 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Следующий шаг
 
-Выполнен сопоставительный анализ пяти foundational-документов (VISION +
-PRODUCT-ARCHITECTURE + PRODUCT-MODEL + PRODUCT-SURFACE-MAP + DAILY-EXPERIENCE)
-по правилу DAILY-EXPERIENCE §50 — см.
-[NEXT-PHASE.md](NEXT-PHASE.md). Рекомендованная минимальная фаза —
-**Daily Experience Foundation** (живой Home + глобальные LIVE-агрегаты +
-derived activity read-layer + сводка «Сейчас/За ночь» в dashboard),
-кандидат PLAN-006. План автоматически не создаётся — формируется отдельным
-решением. Прочие кандидаты (production verification — blockers PLAN-004/005,
-content layer, расширенная статистика серверов, events, email/push) и любые
-темы в этих списках не являются обязательством их реализовать.
+Решение по DAILY-EXPERIENCE §50 принято: [NEXT-PHASE.md](NEXT-PHASE.md)
+→ [PLAN-006 — Daily Experience Foundation](ACTIVE/PLAN-006.md) зарегистрирован
+в [ACTIVE/](ACTIVE/). Работа идёт по workstreams плана (реализация не начата).
+Прочие кандидаты (production verification — blockers PLAN-004/005, content
+layer, расширенная статистика серверов, events, email/push) и любые темы
+в этих списках не являются обязательством их реализовать.
