@@ -1,6 +1,7 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-10 (после выполнения PLAN-005).
+Обновлено: 2026-09-11 (сопоставительный анализ следующей фазы; продукт —
+состояние после PLAN-005).
 
 ## Активный план
 
@@ -140,8 +141,13 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Следующий шаг
 
-Сформировать следующий план отдельным решением (автоматически не создаётся).
-Логичные кандидаты: production verification (blockers PLAN-004/005),
-content layer (статьи /content/articles), расширенная статистика серверов
-(24h/7d/30d графы на реальных данных), events. Наличие темы в списке не
-является обязательством её реализовать.
+Выполнен сопоставительный анализ пяти foundational-документов (VISION +
+PRODUCT-ARCHITECTURE + PRODUCT-MODEL + PRODUCT-SURFACE-MAP + DAILY-EXPERIENCE)
+по правилу DAILY-EXPERIENCE §50 — см.
+[NEXT-PHASE.md](NEXT-PHASE.md). Рекомендованная минимальная фаза —
+**Daily Experience Foundation** (живой Home + глобальные LIVE-агрегаты +
+derived activity read-layer + сводка «Сейчас/За ночь» в dashboard),
+кандидат PLAN-006. План автоматически не создаётся — формируется отдельным
+решением. Прочие кандидаты (production verification — blockers PLAN-004/005,
+content layer, расширенная статистика серверов, events, email/push) и любые
+темы в этих списках не являются обязательством их реализовать.

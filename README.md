@@ -17,6 +17,7 @@
 | [PRODUCT-ARCHITECTURE.md](PRODUCT-ARCHITECTURE.md) | **Из каких частей состоит платформа**: подсистемы, интеграции, границы. |
 | [PRODUCT-MODEL.md](PRODUCT-MODEL.md) | **Как живут сущности**: состояния, permissions, visibility, отношения. Канонический список сущностей — здесь. |
 | [PRODUCT-SURFACE-MAP.md](PRODUCT-SURFACE-MAP.md) | **Какие пользовательские поверхности существуют**: экраны, URL, роли, потоки. |
+| [DAILY-EXPERIENCE.md](DAILY-EXPERIENCE.md) | **Как платформа создаёт причину возвращаться**: живая Home, LIVE-слой, activity как read-layer, петли возврата по ролям (Player / Server Owner / Creator / Member), правила шума, приватности и ranking. |
 | [IDEAS/](IDEAS/) | **Идеи на будущее**. Наличие идеи здесь не создаёт обязательство её реализовать. |
 | [DEVELOPMENT/](DEVELOPMENT/) | **Development Plan system**: планы-переходы, текущее состояние, завершённые планы, замороженные контракты. |
 | [DEVELOPMENT/CURRENT.md](DEVELOPMENT/CURRENT.md) | Текущее состояние продукта и статус планов — начинать отсюда при работе над кодом. |
@@ -27,9 +28,9 @@
 ## Правила
 
 - Единственный источник истины по коду — код и тесты. Документация описывает, но не заменяет.
-- Foundational-документы (VISION / ARCHITECTURE / MODEL / SURFACE MAP) описывают
-  **целевое** состояние платформы. Какой subset реализован сейчас — см.
-  [PROJECT.md](PROJECT.md) и [DEVELOPMENT/CURRENT.md](DEVELOPMENT/CURRENT.md).
+- Foundational-документы (VISION / ARCHITECTURE / MODEL / SURFACE MAP / DAILY
+  EXPERIENCE) описывают **целевое** состояние платформы. Какой subset реализован
+  сейчас — см. [PROJECT.md](PROJECT.md) и [DEVELOPMENT/CURRENT.md](DEVELOPMENT/CURRENT.md).
 - Действующие development plans не хранятся в корне репозитория: активный план —
   в `DEVELOPMENT/ACTIVE/`, завершённый — в `DEVELOPMENT/COMPLETED/`.
 - Исторические документы предыдущих структур каталогов доступны в git-истории

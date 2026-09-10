@@ -1,0 +1,181 @@
+# NEXT-PHASE — сопоставительный анализ следующей фазы разработки
+
+STATUS: DECISION ANALYSIS — это **не** план
+Дата: 2026-09-11
+Вход: [VISION](../VISION.md) + [PRODUCT-ARCHITECTURE](../PRODUCT-ARCHITECTURE.md) +
+[PRODUCT-MODEL](../PRODUCT-MODEL.md) + [PRODUCT-SURFACE-MAP](../PRODUCT-SURFACE-MAP.md) +
+[DAILY-EXPERIENCE](../DAILY-EXPERIENCE.md) (целевое состояние) •
+[PROJECT](../PROJECT.md) + [CURRENT](CURRENT.md) + код `mta-market-site` (фактическое состояние)
+
+---
+
+## 0. Назначение
+
+[DAILY-EXPERIENCE §50](../DAILY-EXPERIENCE.md) фиксирует: после фиксации документа
+план НЕ создаётся автоматически. Сначала нужно сопоставить пять foundational-документов
+и определить, какая **минимальная следующая development phase** создаст наибольший рост
+реальной ценности платформы. Этот документ — результат такого сопоставления.
+
+Development Plan (PLAN-006) из него **не создаётся**: план фиксируется отдельным
+решением и оформляется в [DEVELOPMENT/ACTIVE/](ACTIVE/) по правилам [README](README.md).
+
+---
+
+## 1. Фактическое состояние (после PLAN-005)
+
+Сопоставление требований DAILY-EXPERIENCE с тем, что реально существует
+(проверено по коду `mta-market-site`, см. также CURRENT):
+
+| Элемент daily experience | Есть (факт) | Нет (гэп) |
+|---|---|---|
+| Источники активности | Server (status/news/updates), Resource (release/версии), Forum (темы/ответы), Review (серверы/ресурсы) | Creator publications (статей нет — Content pillar пуст) |
+| LIVE-слой | Мониторинг по каждому серверу: ONLINE/OFFLINE/UNKNOWN из реальных heartbeat-сэмплов | Глобальных агрегатов «N игроков / M серверов онлайн» не существует |
+| Живая Home | Home — маркетплейс-лендинг (Новинки / Популярное / Бесплатные через `/resources/homepage`) | Снапшот «что происходит»: live line, смешанная активность, популярное по типам |
+| Continuous feed | `/news` (только server news/updates), activity-блок на `/community` (только форум) | Единого read-слоя агрегированной активности нет; маршрута `/activity` не существует |
+| Follow | Server follow + счётчик + уведомления | Creator/Resource/Thread/Community follow (осознанно позже — §16) |
+| Notifications | In-app: SERVER_NEWS / SERVER_UPDATE / FORUM_REPLY / REVIEW_EVENT / MODERATION, deep links, колокольчик | Email/push (осознанно позже — §46) |
+| Dashboard | «My MTA» виджеты: мои серверы, подписки, обсуждения, уведомления | Сводки «Сейчас / За ночь» (§5, §15) |
+| Privacy | Privacy by default в server/review/purchase (PLAN-005, проверено E2E) | — |
+
+**Главный вывод:** задняя половина return-петли (FOLLOW → NOTIFICATION → RETURN)
+уже реализована в PLAN-005. Передняя половина — «открыл сайт и за 30 секунд увидел
+жизнь экосистемы» (DAILY-EXPERIENCE §2, §47) — отсутствует: Home отвечает на вопрос
+«что можно купить?», а не «что происходит в MTA?». Все шесть источников активности
+существуют как данные, но нет ни одной поверхности, где они сходятся.
+
+---
+
+## 2. Сопоставление foundational-документов
+
+- **VISION** (§3 North Star, §57 North Star Metric, §63 Final Vision): «место,
+  которое человек открывает, когда хочет узнать, что происходит в MTA:SA», метрика —
+  Weekly Active Community Members. DAILY-EXPERIENCE — прямая операционализация
+  North Star: return loop и есть механизм weekly participation.
+- **PRODUCT-ARCHITECTURE** (§38 Home, §39 Daily Return Loop, §29 actionable
+  notifications, §31 follow): Home «должна отражать текущую жизнь платформы» —
+  сегодня не отражает; Daily Return Loop описан архитектурно, но не реализован
+  как поверхность.
+- **PRODUCT-MODEL** (§41 Discovery, §43 Daily Platform Loop, §31 Notification):
+  «Login → sees updates → opens … → follows → notification → returns» — самый
+  первый шаг («sees updates») вне dashboard не существует.
+- **PRODUCT-SURFACE-MAP** (§3 Home blocks: current community activity, server
+  highlights, latest news, latest discussions, creators; §33 My Dashboard):
+  целевые блоки Home описаны, но ни один «живой» блок не реализован.
+- **DAILY-EXPERIENCE** добавляет недостающий слой правил: live layer (§4),
+  activity — только derived read layer, не новая доменная сущность (§17, §45),
+  минимальный набор activity types (§18), chronological + deterministic ranking
+  без ML (§19), приоритет high-value событий (§40), privacy (§41–42),
+  performance-бюджет (§44).
+
+Противоречий между документами нет. Отмечено одно расширение поверхности:
+потенциальный маршрут `/activity` (DAILY-EXPERIENCE §21) не входит в
+SURFACE-MAP §62 (future surfaces) — при фиксации PLAN-006 его стоит добавить
+плановым изменением SURFACE-MAP; сам анализ этого не делает.
+
+---
+
+## 3. Кандидаты на следующую фазу
+
+Критерии оценки (по §50): рост **реальной** ценности (причина возвращаться),
+опора на существующее, стоимость/риск, зависимость от других фаз.
+
+| Кандидат | Рост ценности | Опора на существующее | Стоимость | Примечание |
+|---|---|---|---|---|
+| **A. Daily Experience Foundation** | Максимальный: превращает 6 существующих источников в причину возвращаться | Максимальная: read-layer поверх готовых доменов | Низкая/средняя: несколько bounded queries + пересборка Home | Закрывает главный гэп North Star |
+| B. Content layer (статьи) | Средний: новый источник, но аудитории чтения ещё нет | Средняя: новый домен целиком | Высокая | Статьям некуда «прийти» без живого Home |
+| C. Production verification | Не растит продуктовую ценность, разблокирует боевой запуск | — | Средняя | Необходим до релиза, ортогонален остальным |
+| D. Guarantee / Deals | Высокий, но в Trust pillar | Низкая: новый финансовый lifecycle | Очень высокая | Требует доверия и аудитории, которые создаёт петля возврата |
+| E. Графики статистики серверов (24h/7d/30d) | Низкий: углубление существующего | Высокая | Низкая | Улучшение, а не петля |
+| F. Email/push канал | Средний: усиливает заднюю половину петли | Высокая | Средняя | §27 прямо требует, чтобы возврат работал и без уведомлений |
+
+---
+
+## 4. Рекомендация: минимальная следующая фаза
+
+**A. «Daily Experience Foundation» — кандидат PLAN-006.**
+
+Переход состояния: из «Home = витрина маркетплейса» в «Home = живой вход
+в экосистему; пользователь за 30 секунд видит, что происходит в MTA»
+(DAILY-EXPERIENCE §2, §47).
+
+Минимальный состав — всё поверх существующих доменов, без новых source of truth:
+
+1. **Глобальные LIVE-агрегаты**: «N игроков онлайн / M серверов онлайн» из
+   существующих heartbeat-сэмплов (реальные данные — ARCHITECTURE §63,
+   VISION Principle 5; никакого fake online). Кэш с коротким TTL.
+2. **Home rebuild** по DAILY-EXPERIENCE §3: блок «Сейчас в MTA» (live line),
+   «Активность» (последние высокоценные события), «Популярное» (top servers по
+   онлайн, активные обсуждения, свежие ресурсы). Полностью доступно Guest (§29) —
+   discover → value → register, SURFACE-MAP §37.
+3. **Derived activity read-layer** (§17, §45): единый read-эндпоинт, агрегирующий
+   bounded-запросы из существующих таблиц (server updates/news, публикации
+   ресурсов/версий, темы/ответы форума, отзывы, новые серверы); окно 7–30 дней,
+   индексы, кэш. Не новая доменная сущность и не источник истины.
+4. **Типы активности** — минимальный набор §18: SERVER_ONLINE, SERVER_UPDATE,
+   SERVER_NEWS, NEW_SERVER, RESOURCE_RELEASE, RESOURCE_UPDATE, NEW_DISCUSSION,
+   DISCUSSION_REPLY, NEW_REVIEW. CREATOR_PUBLICATION и NEW_ARTICLE
+   зарезервированы под Content-фазу (сейчас не генерируются).
+5. **Ранжирование** — chronological + deterministic приоритизация (§19):
+   high-value события (updates, releases, статьи) выше реакций и просмотров (§40).
+   Без ML, без fake trending (§20).
+6. **Dashboard «Сейчас / За ночь»** (§5, §15): сводка «с момента последнего визита»
+   по типам — углубление существующих виджетов My MTA, а не новая страница.
+
+**Явно вне scope фазы** (осознанные решения самого DAILY-EXPERIENCE):
+
+- `/activity` как отдельный непрерывный маршрут (§21: Home и Feed не обязаны
+  совпадать) — read-layer проектируется так, чтобы маршрут добавлялся позже дёшево;
+- articles / creator publications — отдельная Content-фаза;
+- follow для creator/resource/thread/community (§16: порядок Server → Creator → …);
+- email/push, digest, «Today in MTA» (§23), personalized feed, recommendations,
+  trending (§46);
+- time-based personalization (§6: сначала только реальная активность);
+- изменения notification system (§28 deep links уже реализованы в PLAN-005).
+
+---
+
+## 5. Почему не другие кандидаты
+
+- **B (Content)**: добавляет источник ценности, но DAILY-EXPERIENCE §11 делает
+  контент частью ecosystem discovery — слой discovery должен существовать раньше,
+  иначе статьи не получают вход и аудиторию. NEW_ARTICLE/CREATOR_PUBLICATION
+  в §18 зарезервированы — Content-фаза ляжет на готовый activity layer.
+- **C (Production verification)**: обязателен до боевого запуска (blockers
+  PLAN-004/005), но это операционная фаза, а не рост продуктовой ценности;
+  не конфликтует с A и может идти параллельно как ops-работа.
+- **D (Guarantee/Deals)**: самый тяжёлый контур (деньги, споры, юридические
+  ограничения — MODEL §25) и он нуждается в доверии и критической массе
+  пользователей, которые как раз создаёт петля возврата.
+- **E (статистика серверов)**: улучшает существующую страницу сервера,
+  не создаёт новых причин возвращаться.
+- **F (email/push)**: усиливает уже работающую заднюю половину петли, но §27
+  требует, чтобы возврат работал и без уведомлений — сначала фронт петли.
+
+---
+
+## 6. Ограничения и риски
+
+- **Cold start (§38)**: при малой активности снапшот должен иметь честные empty
+  states и не показывать пустые блоки ради заполнения (SURFACE-MAP §33).
+  Platform health staged — фаза не должна имитировать жизнь.
+- **Шум (§40)**: в активность попадают только публичные высокоценные события;
+  «someone liked something» не генерирует item.
+- **Privacy (§41–42, MODEL §40, ARCHITECTURE §34)**: активность строится только
+  из публичных событий; покупки, приватные подписки, follower identities и
+  server membership никогда не агрегируются. Связь Server↔Resource — только
+  по явному opt-in владельца.
+- **Performance (§44, SURFACE-MAP §52)**: bounded queries, временное окно,
+  индексы, кэш; Home не должна деградировать от живого контента.
+- **Ranking**: Latest/Popular/Trending вводятся только при наличии реальной
+  метрики (§19–20) — на первом этапе только хронология + детерминированные
+  приоритеты типов.
+
+---
+
+## 7. Статус решения
+
+Анализ зафиксирован как результат сопоставления пяти foundational-документов
+(DAILY-EXPERIENCE §50 выполнен). Рекомендованная минимальная фаза —
+**Daily Experience Foundation** (кандидат PLAN-006). План создаётся отдельным
+решением по правилам Development Plan system; нумерация продолжается с
+PLAN-006 (VISION §60). CURRENT.md обновлён на этот анализ.
