@@ -114,7 +114,13 @@ Identity находится над отдельными pillars, потому ч
 12. License
 13. Notification
 14. Reputation
-15. Blacklist Entry
+15. Badge
+16. Blacklist Entry
+
+Канонический список сущностей (включая secondary: Payment, Ledger
+Transaction, Moderation Event, Server Verification, Review Token, Media,
+Installation) и их жизненные циклы — в PRODUCT-MODEL §1; при расхождении
+этого перечня с ним ориентир — PRODUCT-MODEL.
 
 Не каждая сущность обязана существовать как отдельный database model.
 
@@ -198,16 +204,21 @@ Server owner создаёт или регистрирует сервер на MT
 4.1 Server lifecycle
 --------------------
 
-REGISTER
-→ VERIFICATION
+CREATED
+→ PENDING_VERIFICATION
+→ VERIFIED
 → ACTIVE
 
 Возможны:
 
 SUSPENDED
-OFFLINE
 ARCHIVED
 
+Monitoring-состояния (ONLINE / OFFLINE / UNKNOWN) — отдельная ось,
+не стадия lifecycle. UNKNOWN ≠ OFFLINE: отсутствие сигнала не означает
+выключенный сервер.
+
+Реализованная модель (PLAN-005) совпадает с PRODUCT-MODEL §3.1.
 Состояния должны определяться реальными business rules.
 
 ---
@@ -328,7 +339,7 @@ ownership/integration подтверждены.
 
 Отзывы серверов должны быть защищены от простой накрутки.
 
-Основной будущий flow:
+Основной flow (реализован в PLAN-005):
 
 Server
 → generate review token
@@ -940,9 +951,9 @@ Dashboard должен показывать наиболее важную тек
 31. FOLLOW / SUBSCRIBE
 ======================
 
-В будущем пользователь может подписываться на:
+Пользователь может подписываться на:
 
-- server;
+- server (реализовано в PLAN-005: follow + счётчик + уведомления);
 - creator;
 - resource;
 - discussion;
@@ -1424,14 +1435,17 @@ Purchase
 53. SERVER INTEGRATION
 ======================
 
-mta-market-module потенциально является integration point между MTA сервером
+mta-market-module является integration point между MTA сервером
 и MTA Market.
 
-В будущем через него могут быть:
+Через него реализовано (PLAN-005, market_client):
 
-- server verification;
+- server verification (possession-токен + heartbeat);
 - review token generation;
-- server status;
+- server status (только агрегаты: онлайн/слоты/статус).
+
+Целевое состояние (не реализовано):
+
 - license verification;
 - resource lifecycle;
 - updates;
@@ -1525,14 +1539,17 @@ Development Plan может реализовывать только часть �
 Пример:
 
 PLAN-005
-→ Community Core
+→ Community & Server Foundation (ВЫПОЛНЕН 2026-09-10)
 
-не означает:
+включал форум и уведомления, потому что ecosystem loop
+SERVER → COMMUNITY → FOLLOW → NOTIFICATION → RETURN
+нельзя проверить без них; при этом сделки, статьи и гарантии
+в план не входили.
+
+Пример границы: название плана не означает
 
 Forum
-
 + Chat
-+ Notifications
 + Social Network
 + Everything.
 
