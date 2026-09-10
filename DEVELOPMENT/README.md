@@ -28,6 +28,10 @@ Development Plan — это не просто список задач.
 | План | Статус | Суть |
 |---|---|---|
 | [PLAN-001](COMPLETED/PLAN-001.md) | COMPLETED (2026-09-10) | Initial Product Release: довести MTA Market до первого цельного рабочего продукта (auth → marketplace → seller → модерация → покупка → лицензия), проверенного реальным browser flow. |
+| [PLAN-002](COMPLETED/PLAN-002.md) | COMPLETED (2026-09-10) | Product Experience Foundation. |
+| [PLAN-003](COMPLETED/PLAN-003.md) | COMPLETED (2026-09-10) | Marketplace Core. |
+| [PLAN-004](COMPLETED/PLAN-004.md) | IMPLEMENTATION COMPLETE (2026-09-10) | Production Readiness & Operational Hardening. |
+| [PLAN-005](COMPLETED/PLAN-005.md) | IMPLEMENTATION COMPLETE (2026-09-10) | Community & Server Foundation: сущность SERVER (регистрация, верификация владения через токен интеграции, публичные страницы, мониторинг ONLINE/OFFLINE/UNKNOWN), глобальный форум, server news/updates, верифицированные отзывы (одноразовые токены), follow + уведомления, публичные профили с бейджами, модерация и репорты, privacy-by-default на backend-уровне. |
 
 ## Правила работы с планами
 
@@ -55,15 +59,20 @@ pnpm --filter @mta-market/web dev          # web :3000
 
 # admin-аккаунт для разработки (G-004; отказ в NODE_ENV=production)
 npx tsx scripts/dev-admin.ts --email admin@dev.local --username admin --password 'dev-password-123'
+
+# PLAN-005: dev-датасет сообщества/серверов + живой онлайн (симулятор интеграции)
+npx tsx scripts/seed-plan005.ts
+npx tsx scripts/dev-heartbeat.ts
 ```
 
 Проверка качества:
 
 ```sh
 pnpm type-check          # оба приложения
-pnpm --filter @mta-market/server test    # backend tests (254)
+pnpm --filter @mta-market/server test    # backend tests (336 после PLAN-005)
 pnpm --filter @mta-market/web build      # production build web
-pnpm test:e2e:admin && pnpm test:e2e     # browser E2E (12) — нужны запущенные серверы
+pnpm test:e2e:admin && pnpm test:e2e     # browser E2E — нужны запущенные серверы
+# PLAN-005: серверы/сообщество держат живыми (heartbeat-симулятор в отдельном терминале)
 ```
 
 Модуль (Linux x64): `g++ -std=c++17 -I source source/drm/*.cpp tests_drm/main.cpp -lssl -lcrypto`

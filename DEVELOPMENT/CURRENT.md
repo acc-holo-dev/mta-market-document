@@ -1,111 +1,126 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-10 (после выполнения PLAN-004).
+Обновлено: 2026-09-10 (после выполнения PLAN-005).
 
 ## Активный план
 
-Нет. PLAN-004 (Production Readiness & Operational Hardening) выполнен и
-зафиксирован (см. [COMPLETED/PLAN-004.md](COMPLETED/PLAN-004.md)) со статусом
-**IMPLEMENTATION COMPLETE — PRODUCTION NOT VERIFIED**: код и процедуры готовы,
-реальные production-проверки (live webhook, Windows DRM, боевой домен,
-restore/rollback drill) требуют deployment-окружения.
+Нет. PLAN-005 (Community & Server Foundation) выполнен и зафиксирован
+(см. [COMPLETED/PLAN-005.md](COMPLETED/PLAN-005.md)) со статусом
+**IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
+отдельным шагом** (см. Blockers внизу).
 
 ## Состояние продукта
 
-MTA Market — полнофункциональный marketplace, подготовленный к production
-deployment (см. [PROJECT.md](../PROJECT.md)). После PLAN-004 дополнительно:
+MTA Market — marketplace + community + server platform (см. [PROJECT.md](../PROJECT.md)).
+После PLAN-005 платформа больше не только про commerce: у неё есть живая
+социальная поверхность вокруг сущности SERVER.
 
-- **Media contract**: S3 и локальное хранилище работают по одному контракту
-  (opaque `media-` имена → объект в `media/` префиксе → контролируемая
-  раздача `/media/<name>`; опциональный 302 на CDN через
-  `MEDIA_PUBLIC_BASE_URL`).
-- **Migration formal path**: Prisma 8 migration-пакеты существуют и в git
-  (baseline 215 ops + media 5 ops), `deploy.sh` применяет `db migrate`
-  (formal path) — dev-only `db update` для production запрещён;
-  connection limits задокументированы (пул 10/процесс дефолт).
-- **Production env matrix**: `.env.example` документирует все переменные с
-  разделением dev/staging/prod; startup validation fail-fast (включая
-  `DRM_MASTER_KEY`, который раньше проверялся только в runtime).
-- **Rate limits**: production defaults зафиксированы в prod-compose
-  (AUTH 100/15мин, LOGIN 10/мин/аккаунт и т.д.); dev/E2E значения изолированы.
-- **Redis semantics**: security-critical лимитеры (auth/strict/per-account)
-  fail-closed при outage Redis (503), bulk-limiter — fail-open (решение M-002
-  зафиксировано); Redis содержит только rate-limit счётчики — persistence не
-  требуется (M-003).
-- **Storage**: uploads volume в Dockerfile chown-нут под non-root (P0-фикс —
-  раньше все загрузки в проде падали EACCES); `/uploads/`-локация в nginx
-  удалена (латентный bypass артефактов).
-- **Deploy pipeline**: backup → migrate (`prisma db update`) → deploy exact
-  `IMAGE_TAG` → health-gate (`compose up --wait`) → auto-rollback на
-  предыдущий тег; предыдущая версия образа сохраняется для отката.
-- **CI**: публикация образов гейтится на test+security+lint; audit-gate.sh
-  блокирует high/critical (waivers только с датой ревью); 23 уязвимости
-  закрыты (next 15.5.24, overrides hono/lodash/postcss/sharp и др.); SHA-теги
-  образов `format=long`.
-- **Финансовая целостность**: знак кэша баланса при refund исправлен;
-  settlement идемпотентен (детерминированный transactionId
-  `settle:purchase:<id>`) и дозапускается в alreadyCompleted-ветке;
-  `payment.canceled` закрывает PENDING-заказы (FAILED), поздний succeeded
-  чинит и завершает (provider truth wins); маппинг canceled в reconciliation
-  единый.
-- **Надёжность процесса**: глобальный error-middleware, unhandledRejection
-  handler, graceful shutdown закрывает HTTP/Redis/DB.
-- **nginx**: строгий CSP (`default-src 'self'`, без unsafe-eval), HSTS в
-  443-блоке, Permissions-Policy, security headers не теряются в location,
-  Connection upgrade через map, server_tokens off.
-- **DRM client**: подпись challenge над декодированными байтами (протокольный
-  P0), interop-тест в `tests_drm/main.cpp`.
-- **Документация**: production runbook, database-migrations, backup-restore
-  (RPO 24h/RTO 4h) в `mta-market-site/docs/operations/`.
+### Что появилось в PLAN-005
 
-## Приёмка PLAN-004 (2026-09-10)
+- **Server domain (A/B/C/D/E)**: модель Server (slug, owner, брендинг,
+  connection-данные, lifecycle CREATED → PENDING_VERIFICATION → VERIFIED →
+  ACTIVE (+ SUSPENDED/ARCHIVED)), staff-роли, регистрацию через мастер
+  /servers/create, ownership verification через possession-токен интеграции
+  (первый валидный heartbeat от модуля/скрипта → VERIFIED, audit + note),
+  публичную страницу /servers/[slug] (hero с онлайн-статусом, review,
+  follower count; табы Обзор/Live/Новости/Обновления/Отзывы/Сообщество),
+  monitoring (ONLINE/OFFLINE/UNKNOWN; graceful OFFLINE только от сервера,
+  тишина → UNKNOWN через sweep-job, никогда не «врёт» OFFLINE), statistics
+  (peak/average/uptime по реальным сэмплам, 24h/7d/30d).
+- **Global community (F)**: форум (7 категорий, темы, посты, реакции,
+  редактирование, мягкое удаление, состояния OPEN/LOCKED/ARCHIVED,
+  просмотры = реальные, pinned), хаб /community (latest/active/pinned/
+  activity), server-linked обсуждения (G-004: привязка темы к серверу —
+  только персоналом этого сервера).
+- **Server news & updates (H/I)**: черновик → публикация (уведомления
+  подписчикам), опциональное обсуждение новости (тред), обновления с
+  версией/changelog, глобальная лента /news (один News object на все
+  поверхности).
+- **Reviews с токенами (J/K)**: отзывы сервера доступны ТОЛЬКО после
+  claim одноразового токена интеграции (server-bound, expiry 24h по
+  умолчанию, replay-protection, self-review ban, 1 отзыв/сервер,
+  ✓ Verified Interaction badge = подтверждённое взаимодействие, скрытие
+  отзывов модерацией с audit).
+- **Follow & notifications (L/M)**: подписка на сервер, счётчик подписчиков,
+  уведомления SERVER_NEWS / SERVER_UPDATE / FORUM_REPLY / REVIEW_EVENT /
+  MODERATION, центр /notifications с непрочитанными и «прочитать всё»,
+  колокольчик с бейджем в навбаре.
+- **Dashboard & profile (N/O/P)**: «My MTA» блок в существующем dashboard
+  (мои серверы, подписки, обсуждения, уведомления), публичный профиль
+  /profile/[username] с бейджами (Server Owner / Verified Server /
+  Verified Seller) и публичными серверами/ресурсами.
+- **Moderation & reports (Q/R)**: админ-вкладки Серверы (inspect, verify/
+  reject, suspend/restore/archive — каждое действие audit + уведомление
+  владельцу), Жалобы (queue → resolve/dismiss + уведомление репортёру),
+  модерация контента сообщества (news/reviews/threads).
+- **Privacy by default (S/T)**: host/port никогда не покидают бэкенд;
+  showResources/showStaff/showTechStack/showCommunity выключены по
+  умолчанию; showStats=true по умолчанию, но выключение скрывает live-
+  числа на API-уровне; связь Server↔Resource публична только по явному
+  opt-in владельца (проверено E2E: «public API does not expose the
+  resource list»).
+- **Integration protocol (AC/§33)**: POST /integration/heartbeat (token
+  possession → proof-of-control; только агрегаты: count/status), POST
+  /integration/review-tokens (one-time токен для игрока). Модуль
+  (mta-market-module): новый `source/drm/market_client.{hpp,cpp}` + Lua
+  функции `mta_market_configure/start/stop/report_players/status/
+  review_token` (privacy: только счётчики, никаких player identity).
+- **Поиск (W)**: /search с явными типами результатов (Resources/Servers/
+  Discussions + счётчики).
+- **Seed (§34)**: scripts/seed-plan005.ts — 10 реалистичных серверов
+  (online/offline/unknown/pending/suspended, приватность-вариации),
+  14 пользователей, 7 категорий, темы с ответами и реакциями, новости
+  (published+draft), обновления, 15 verified-отзывов, подписки,
+  уведомления. Dev-инструмент scripts/dev-heartbeat.ts держит онлайн
+  свежим (симулятор интеграции через публичный API).
 
-- Backend-тесты: **256/256** (было 253/254; `startup-policy` acceptance больше
-  не падает — причина была в dotenv-заполнении JWT_SECRET из dev-.env).
-- Playwright browser E2E: **25/25** на живых dev-серверах
-  (PostgreSQL/Redis в Docker; для запуска Chromium в окружении потребовались
-  локальные системные библиотеки — среда, не продукт).
-- Prisma 8 migration formal path: `migration plan` (baseline 215 ops +
-  media 5 ops) → `db migrate` → `migration status` "Up to date" на живой БД;
-  пакеты и snapshots в git.
-- `tsc --noEmit` чист у server и web; production build server и web проходит;
-  lint чистый.
-- Модуль (C++): `make -f source/drm/Makefile test` — ALL TESTS PASSED, включая
-  новый challenge interop-тест.
-- Security: audit-gate 0 high/critical (23 закрыты обновлениями).
-- Статус плана: **IMPLEMENTATION COMPLETE — PRODUCTION NOT VERIFIED**.
+## Приёмка PLAN-005 (2026-09-10)
+
+- Backend-тесты: **336/336** (было 256; +80 PLAN-005: servers 28,
+  community 21, reviews 15, news 16; REGRESSION: auth/commerce/DRM/
+  payments не сломаны — payments-webhook требует TRUST_PROXY=true при
+  локальном прогоне, в CI это дефолт).
+- Prisma 8 migration formal path: `migration plan` (93 additive ops,
+  16 новых таблиц + индексы/FK) → `db migrate` на dev-БД → "Applied 1
+  migration(s) (93 operation(s))"; пакет
+  `migrations/app/20260910T1051_plan005_community_server` в git.
+- `tsc --noEmit` чист у server и web; production build проверяется CI.
+- Playwright browser E2E: план005-спека прогоняется на живых dev-серверах
+  (см. COMPLETED/PLAN-005.md для финального счёта).
+- Live-проверка цепочки интеграции (ручная, на dev-серверах): heartbeat с
+  токеном → monitoring ONLINE + verification VERIFIED → публичная страница
+  показывает 431/800; выпуск review-token через /integration/review-tokens
+  → claim через API → eligibility granted.
+- Модуль (C++): market_client + Lua-функции добавлены; сборка модуля
+  требует Linux-тулчейн (Windows-сборка модуля была и остаётся отдельной
+  задачей — см. Blockers PLAN-004).
 
 ## Blockers
 
-Нет блокеров кода. Перед реальным production-запуском нужно окружение для:
+Нет блокеров кода. Ограничения/что осталось (в рамках PLAN-005 не было
+обязательным):
 
-1. **YooKassa sandbox→real** (D-007): sandbox-магазин, зарегистрированный
-   webhook URL, тестовый платёж → webhook → license; потом отдельный
-   real-money прогон. Runbook: `docs/operations/production-runbook.md` §12.
-2. **DRM live + Windows** (F-001/F-003): сервер + собранный модуль против
-   staging-лицензионного сервера; Windows-сборка (MSVC/MinGW) и DPAPI
-   key store ни разу не компилировались.
-3. **Restore/rollback drill** (C-005, K-005): прогон на staging-клоне по
-   `docs/operations/backup-restore.md`.
-4. **Домен/TLS/DNS** (S-001..S-006) и внешний uptime-мониторинг (I-004/I-005)
-   — операции на стороне инфраструктуры.
+1. **Windows-сборка модуля** (унаследовано из PLAN-004): POSIX-сокеты в
+   http_client.cpp + отсутствие OpenSSL-линковки в CMake. market_client
+   следует за существующей архитектурой и наследует это ограничение.
+2. **Production verification** (как и после PLAN-004): live domain, real
+   payments, restore drill.
+3. **Почтовые уведомления**: in-app уведомления готовы; email-канал —
+   будущий план (нужен digest/анти-спам дизайн).
 
-Известные непокрытые темы (кандидаты в следующий план):
+Известные осознанные ограничения (кандидаты в следующие планы):
 
-- Payout flow (замкнуть «начислено → выведено», SELLER_PAYOUT) — до реальных
-  выплат.
-- Password reset + смена пароля с инвалидацией сессий (O-001/O-003).
-- SQL-агрегация rating/popular вместо in-memory капа 1000 (R-002) — перед
-  ростом каталога.
-- Шифрование OAuth-токенов в БД (G-01 аудита) или отказ от их хранения.
-- Account deletion/anonymization (P-003).
-- Reconciliation: ledger-аудит (дубли LedgerEntry), retry/backoff шагов,
-  distributed lock при >1 реплики.
-- pg_trgm GIN для ILIKE-поиска + индексы под сортировки (R-003/G-14).
+- Rate-limit счётчики подписок/новостей используют userRateLimit (in-memory
+  Redis) — при росте аудитории пересмотреть.
+- Feed /news не имеет сортировок/фильтров по серверу (минимум по плану).
+- Поиск — ILIKE по name/description/title (pg_trgm — кандидат из PLAN-004
+  blockers, теперь и для servers/threads).
+- Нет email-уведомлений; нет push.
 
 ## Следующий шаг
 
 Сформировать следующий план отдельным решением (автоматически не создаётся).
-Логичные кандидаты: production verification plan (пункты blockers выше),
-payout flow, password lifecycle. Наличие темы в списке не является
-обязательством её реализовать.
+Логичные кандидаты: production verification (blockers PLAN-004/005),
+content layer (статьи /content/articles), расширенная статистика серверов
+(24h/7d/30d графы на реальных данных), events. Наличие темы в списке не
+является обязательством её реализовать.
