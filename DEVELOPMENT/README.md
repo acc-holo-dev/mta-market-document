@@ -36,6 +36,7 @@ Development Plan — это не просто список задач.
 | [PLAN-003](COMPLETED/PLAN-003.md) | COMPLETED (2026-09-10) | Marketplace Core. |
 | [PLAN-004](COMPLETED/PLAN-004.md) | IMPLEMENTATION COMPLETE (2026-09-10) | Production Readiness & Operational Hardening. |
 | [PLAN-005](COMPLETED/PLAN-005.md) | IMPLEMENTATION COMPLETE (2026-09-10) | Community & Server Foundation: сущность SERVER (регистрация, верификация владения через токен интеграции, публичные страницы, мониторинг ONLINE/OFFLINE/UNKNOWN), глобальный форум, server news/updates, верифицированные отзывы (одноразовые токены), follow + уведомления, публичные профили с бейджами, модерация и репорты, privacy-by-default на backend-уровне. |
+| [PLAN-006](COMPLETED/PLAN-006.md) | IMPLEMENTATION COMPLETE (2026-09-11) | Daily Experience Foundation: живой Home («Что происходит в MTA прямо сейчас?»), глобальные LIVE-агрегаты из реальных heartbeat-сэмплов, derived activity read-layer (9 типов, окно 7 дней, детерминированный ranking, без новой доменной сущности), блоки «Популярное» на реальных метриках, сводка «Сейчас / За ночь» в dashboard, инвалидация кэша на высокоценных мутациях. |
 
 ## Правила работы с планами
 

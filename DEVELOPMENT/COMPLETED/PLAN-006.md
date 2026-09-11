@@ -1,10 +1,10 @@
 # PLAN-006 — Daily Experience Foundation
 
-> СПЕЦИФИКАЦИЯ активного плана. Зарегистрирован: 2026-09-11.
-> Обоснование выбора фазы: [NEXT-PHASE.md](../NEXT-PHASE.md) — сопоставительный
-> анализ пяти foundational-документов по правилу DAILY-EXPERIENCE §50.
-> Запись о выполнении (EXECUTION RECORD) добавляется в конец файла после
-> завершения (конвенция PLAN-002/005).
+> Этот файл объединяет СПЕЦИФИКАЦИЮ плана (§0–§25) и ЗАПИСЬ О ВЫПОЛНЕНИИ
+> (EXECUTION RECORD, в конце документа) — по конвенции PLAN-002/005.
+> Статус: **IMPLEMENTATION COMPLETE** (2026-09-11); production-верификация
+> остаётся отдельным шагом (см. DEVELOPMENT/CURRENT.md).
+> Обоснование выбора фазы: [NEXT-PHASE.md](../NEXT-PHASE.md).
 
 ---
 
@@ -815,3 +815,192 @@ Home → горячее обсуждение → ответ → реакция
 Home перестаёт быть витриной и становится окном в живую экосистему:
 MTA Market начинает превращаться из каталога функций в живую платформу
 (DAILY-EXPERIENCE §49), не ломая ни один из существующих доменов.
+
+---
+
+# EXECUTION RECORD — выполнено 2026-09-11
+
+**Статус: IMPLEMENTATION COMPLETE** (2026-09-11)
+
+## Итог
+
+Цель плана достигнута: Home перестал быть витриной маркетплейса и стал живым
+входом в экосистему. На главной — честные LIVE-агрегаты из реальных
+heartbeat-сэмплов, смешанная лента высокоценных событий (derived read-layer
+без новой доменной сущности), блоки «Популярное» на реальных метриках и
+персональная сводка «Сейчас / За ночь» в dashboard. Все правила публичности
+enforced на backend-уровне read-слоя. Guest видит всё; каждый элемент ведёт
+к реальной сущности. Ultimate loop: DISCOVER → INTERACT работает на главной;
+FOLLOW → NOTIFICATION → RETURN (PLAN-005) принимает эстафету.
+
+## Что сделано (по workstreams)
+
+### WORKSTREAM B — LIVE-агрегаты
+- `src/lib/activity.ts`: `computeLiveAggregates` — сумма реальных playerCount
+  только по серверам VERIFIED/ACTIVE + monitoring=ONLINE + showStats=true
+  (B-002). UNKNOWN/OFFLINE/SUSPENDED/showStats=false исключены. Кэш Redis
+  TTL 45с, fail-open при недоступности Redis.
+- `GET /activity/live` — публичный live-сигнал (проверено E2E: 1006+ игроков,
+  6 серверов на seed-данных).
+
+### WORKSTREAM C — Activity read-layer
+- Единый read-модуль `lib/activity.ts` + `GET /activity?limit=` (бакеты
+  кратные 5, 5..50). Фиксированное окно 7 дней (`ACTIVITY_WINDOW_DAYS`,
+  cap 30). Bounded queries: один запрос на источник (8–12 rows) + точечные
+  join-подзапросы; SERVER_ONLINE — максимум 2×12 индексных point-query по
+  [serverId, sampledAt]. Слияние в памяти. Никаких N+1 по сущностям.
+- Замер (K-003): cold compute **93мс**, повторный **23мс** (dev-БД с seed);
+  в product-режиме отдаётся из кэша мгновенно.
+
+### WORKSTREAM D — Типы и ранжирование
+- 9 типов D-001: SERVER_ONLINE (по переходу сэмплов OFFLINE/UNKNOWN→ONLINE у
+  границы окна; неоднозначные истории пропускаются, не подделываются),
+  SERVER_UPDATE, SERVER_NEWS, NEW_SERVER (verifiedAt в окне), RESOURCE_RELEASE
+  (ModerationEvent toStatus=PUBLISHED — реальный момент публикации),
+  RESOURCE_UPDATE (ResourceVersion PUBLISHED), NEW_DISCUSSION/DISCUSSION_REPLY
+  (один item на тему, count ответов), NEW_REVIEW (сервер + ресурс).
+- Не-события: реакции/просмотры/покупки/регистрации/heartbeat (D-002, §41).
+- Ранжирование: chronological desc → priority типа (SERVER_UPDATE 6 …
+  DISCUSSION_REPLY 1) → type/href lexicographic (детерминировано, D-004).
+- Dedup: NEW_DISCUSSION вытесняет DISCUSSION_REPLY той же темы; NEW_SERVER
+  вытесняет SERVER_ONLINE того же сервера (D-005).
+
+### WORKSTREAM E — Публичность (backend-enforced)
+- Только PUBLISHED/VISIBLE/не-удалённые сущности; suspended/pending серверы и
+  SUSPENDED ресурсы исключены; showStats=false не влияет на live-агрегаты и
+  SERVER_ONLINE; showCommunity=false гасит server-linked темы (E-004,
+  согласовано с PLAN-005 G-002); news-linked треды исключены как шум; покупатель
+  никогда не фигурирует (проверено тестом §18).
+
+### WORKSTREAMS F/G/H — Home rebuild
+- `app/page.tsx`: hero «Сейчас в MTA» (live line + поиск + CTA discovery),
+  «Активность» (лента items), «Популярное» (Топ серверов по реальному
+  playerCount + Горячие обсуждения по реальной активности), ниже — сохранённые
+  маркетплейс-секции PLAN-003 и seller CTA (F-001/F-003).
+- Компоненты `components/home/`: LiveLine (честные empty states, refetch 60с),
+  ActivityFeed (4 обязательных элемента item §43: заголовок/время/контекст/
+  deep link; unknown-типы не рендерятся), PopularSection (пустые блоки
+  скрываются, без fake trending; Popular Creators не введён — H-004).
+- Fresh Resources реализованы существующими секциями маркетплейса (Новинки/
+  Популярное/Бесплатные) — без дублирования поверх (записано здесь как
+  решение, соответствует F-001.4).
+
+### WORKSTREAM I — Dashboard «Сейчас / За ночь»
+- `GET /dashboard/now`: сводка с момента последнего визита (User.dashboardSeenAt
+  — единственное аддитивное поле схемы); first visit → окно 24ч. Счётчики по
+  реальным отношениям: подписки (обновления/новости), мои темы (новые ответы),
+  купленные ресурсы (новые версии), unread-уведомления; deep links у каждого
+  ряда (I-004); baseline продвигается после вычисления (I-002).
+- `components/dashboard/NowSummary.tsx` — карточка «Сейчас» над My MTA;
+  пустые ряды не показываются (SURFACE-MAP §33).
+
+### WORKSTREAMS J/L — Empty states, mobile
+- Честные empty states: «Пока тихо» в активности, скрытие пустых блоков
+  популярного, «Данные онлайн недоступны» при ошибке источника.
+- Мобильные брейкпоинты на всех новых блоках; smoke в E2E (390×844).
+
+### WORKSTREAM K — Кэш и инвалидация (уточнение к плану)
+- Кэш снапшота/live в Redis TTL 45с + **инвалидация на высокоценных
+  мутациях**: publish news, create update, resource approve/release версии,
+  create thread/reply, create review (`bustActivityCache()`). TTL остаётся
+  safety net для источников без write-hook (heartbeat-driven SERVER_ONLINE).
+  Это усиление §44: свежие события появляются на Home мгновенно, стоимость —
+  2 Redis DEL на мутацию.
+
+### WORKSTREAM M — Seed/dev-данные
+- Seed-plan005 проверен: события в окне 7 дней (обновления 2–6 дней, темы/ответы
+  3–7 дней, новости 4–6 дней), privacy-вариации (Cedar Falls showStats=false,
+  Sunset Wire OFFLINE, Freeroam Central PENDING, Harbor Heist SUSPENDED).
+- scripts/dev-heartbeat.ts держит 7 серверов онлайн (реальные heartbeats через
+  публичный API). E2E-артефакты в dev-БД вычищены (однократно, вручную).
+
+### §17–§18 — Тесты
+- `tests/plan006-activity.test.ts` (12 тестов): публичность эндпоинта, точные
+  live-агрегаты (57 игроков/3 сервера на фикстурах), наличие всех 9 типов с
+  deep links, исключение черновиков/скрытого/suspended/showStats=false/
+  showCommunity=false/news-linked, dedup, хронология + детерминированный
+  tie-break (три item в одну секунду → SERVER_UPDATE → RESOURCE_UPDATE →
+  NEW_REVIEW), окно 7 дней, покупки не становятся событиями, limit,
+  popular на реальных метриках, dashboard: first visit 24h baseline →
+  второй визит от dashboardSeenAt (обновления/ответы/версии купленного),
+  401 без auth.
+- Гигиена тестовой БД: beforeAll удаляет накопленные артефакты PLAN-001 e2e
+  (p1-*/e2e-* ресурсы, FK-safe цепочка purchase→license→installation→lease,
+  signatures/encryption/sandbox/compatibility) — они иначе вытесняют фикстуры
+  из limit-окон. (Plan001-спека остаётся без afterAll-чистки — отдельная
+  техническая задолженность, не из PLAN-006.)
+
+### §19–§21 — E2E и регресс
+- `e2e/plan006.spec.ts` (5 тестов): guest Home (live line + активность +
+  популярное), deep link item → сущность, «владелец публикует новость →
+  появляется в Home-активности» (реальный API + инвалидация кэша),
+  dashboard «Сейчас» + продвижение baseline («С вашего прошлого визита»),
+  mobile smoke.
+- Совместимостное исправление: `e2e/plan001.spec.ts` «purchases dashboard» —
+  локатор `getByText(title)` → `getByRole('link', { name, exact: true })`:
+  dashboard теперь легитимно содержит то же имя ресурса в сводке «Сейчас»
+  (detail-текст). Поведение продукта не менялось.
+- Полный регресс: backend 349/349 (337 до плана + 12 PLAN-006); Playwright
+  **42/42** (plan001 12 + plan003 13 + plan005 12 + plan006 5); web production
+  build exit 0; `tsc --noEmit` чист у server и web.
+
+### Финальные счёта приёмки (2026-09-11)
+
+- Backend (vitest): **349/349** (было 337; +12 PLAN-006).
+- Playwright browser E2E: **42/42** (было 37; +5 PLAN-006).
+- Production build web: exit 0, First Load JS shared **102 kB** (без роста —
+  K-002 выполнен).
+- Миграция: `migration plan` (10 additive ops: колонка user.dashboardSeenAt +
+  9 индексов под оконные запросы) → `db migrate` на dev-БД → «Applied 1
+  migration(s) (10 operation(s))»; пакет `migrations/app/
+  20260911T0004_plan006_daily_experience` в git; тестовая БД — `db update`.
+- Performance: cold compute 93мс / warm 23мс; число запросов на cold build —
+  фиксированный bounded-набор (~20), на горячем пути — 0 (кэш).
+- Live-проверка: heartbeat-симулятор → 1006+ игроков / 6 серверов онлайн на
+  живом Home; публикация новости появляется в активности мгновенно.
+
+## Уроки окружения (для воспроизведения)
+
+1. **vitest TEST_DATABASE_URL**: дефолт в `vitest.config.ts` теперь
+   `postgresql://postgres:postgres@127.0.0.1:5433/postgres` (контейнер
+   mta-market-postgres-test, POSTGRES_PASSWORD=postgres). URL без пароля
+   даёт «client password must be a string»; после перезапуска контейнера
+   ORM-маркер контракта требует `prisma db update` на тестовой БД.
+2. **Контракт-маркер**: «Database error while reading contract marker» лечится
+   формальным `prisma db update --confirm default` на соответствующей БД.
+3. **Фоновые процессы**: `tsx watch`/`next dev` нельзя pipe'ить в `head` —
+   SIGPIPE убивает дочерний процесс приложения (watch остаётся «жив»).
+   Перезапуск: `npx tsx watch src/index.ts > /tmp/mta-api.log 2>&1` (и
+   `npx next dev -p 3000 > /tmp/mta-web.log 2>&1`).
+4. **next build при живом next dev** портит .next (известный урок PLAN-005) —
+   перед production build останавливать dev-сервер либо пересоздавать .next.
+5. **ORM timestamptz** возвращается как «YYYY-MM-DD HH:MM:SS.ms+00» —
+   сравнения времени в тестах через Date.parse, не строково. Сортировка по
+   nullable-колонкам — в JS (не в orderBy), как в /servers sort=players.
+6. **plan001-e2e оставляет p1-*/e2e-* ресурсы** в тестовой БД (покупатели вне
+   фиксированного диапазона) — PLAN-006 beforeAll чистит их FK-безопасно.
+7. **e2e-admin** (логин plan001 beforeAll) создаётся `pnpm test:e2e:admin`
+   и легко удаляется массовыми чистками по маске e2e% — аккаунт восстановлен
+   документированным скриптом.
+
+## §23 Walkthrough
+
+- SCENARIO 1 (GUEST, утро): / → live line 1006 игроков/6 серверов → активность
+  за окно → клик по обновлению → страница сервера. ✅ (E2E 1–2)
+- SCENARIO 2 (PLAYER): Home → сервер → follow (plan005 E2E) → уведомление →
+  возврат через «Сейчас». ✅
+- SCENARIO 3 (SERVER OWNER): publish news через API → Home-активность
+  обновилась мгновенно (инвалидация кэша). ✅ (E2E 3)
+- SCENARIO 4 (COMMUNITY MEMBER): горячие обсуждения в «Популярном» → тред →
+  ответ (plan005 E2E) → сводка «Сейчас» показывает новые ответы. ✅ (E2E 4)
+
+## Ограничения
+
+- Маршрут `/activity` (continuous feed) сознательно не построен — read-слой
+  готов (DAILY-EXPERIENCE §21: Home и Feed не обязаны совпадать).
+- «Popular Creators» отложен до появления надёжной публичной метрики (H-004).
+- production-верификация (домен/боевой платёж/restore drill) — вне скоупа,
+  как в PLAN-004/005 (см. CURRENT.md Blockers).
+- RESOURCE_UPDATE использует publishedAt версии (время загрузки артефакта) —
+  при длинном разрыве между загрузкой и релизом событие может не попасть в
+  окно; принято как согласованное с существующими поверхностями упрощение.

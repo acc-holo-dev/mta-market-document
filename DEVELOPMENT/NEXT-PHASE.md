@@ -181,5 +181,6 @@ SURFACE-MAP §62 (future surfaces) — при фиксации PLAN-006 его �
 PLAN-006 (VISION §60). CURRENT.md обновлён на этот анализ.
 
 **Обновление (2026-09-11):** решение принято —
-[PLAN-006](ACTIVE/PLAN-006.md) зарегистрирован в `DEVELOPMENT/ACTIVE/`
-на основе этого анализа; реализация не начата.
+[PLAN-006](COMPLETED/PLAN-006.md) зарегистрирован в `DEVELOPMENT/ACTIVE/`
+на основе этого анализа и **выполнен** в тот же день (IMPLEMENTATION
+COMPLETE, см. EXECUTION RECORD в конце файла).

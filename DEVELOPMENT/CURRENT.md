@@ -1,21 +1,48 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (PLAN-006 зарегистрирован; реализация не начата).
+Обновлено: 2026-09-11 (после выполнения PLAN-006).
 
 ## Активный план
 
-[PLAN-006 — Daily Experience Foundation](ACTIVE/PLAN-006.md)
-(зарегистрирован 2026-09-11). Переход состояния: из «Home = витрина
-маркетплейса» в «Home = живой вход в экосистему» — глобальные LIVE-агрегаты
-из реальных heartbeat-сэмплов, derived activity read-layer (без новой
-доменной сущности), пересборка Home («Сейчас в MTA» / Активность /
-Популярное), сводка «Сейчас / За ночь» в dashboard. Обоснование выбора
-фазы — [NEXT-PHASE.md](NEXT-PHASE.md). Реализация ещё не начата.
-
-Предыдущий план: PLAN-005 (Community & Server Foundation) выполнен и
-зафиксирован ([COMPLETED/PLAN-005.md](COMPLETED/PLAN-005.md)) со статусом
+Нет. PLAN-006 (Daily Experience Foundation) выполнен и зафиксирован
+(см. [COMPLETED/PLAN-006.md](COMPLETED/PLAN-006.md)) со статусом
 **IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
 отдельным шагом** (см. Blockers внизу).
+
+## Состояние продукта
+
+MTA Market — marketplace + community + server platform (см. [PROJECT.md](../PROJECT.md)).
+После PLAN-006 платформа отвечает на главный вопрос daily experience:
+Home — живой вход в экосистему («Что происходит в MTA прямо сейчас?»).
+
+### Что появилось в PLAN-006
+
+- **LIVE-слой**: глобальные агрегаты «N игроков / M серверов онлайн» из
+  реальных heartbeat-сэмплов (только VERIFIED/ACTIVE + ONLINE + showStats=true),
+  кэш Redis TTL 45с; `GET /activity/live`.
+- **Activity read-layer**: `GET /activity` — смешанная лента высокоценных
+  событий (9 типов DAILY-EXPERIENCE §18) из существующих доменов, окно 7 дней,
+  bounded queries, dedup, chronological + детерминированные приоритеты без ML.
+  Никакой новой доменной сущности (§45).
+- **Home rebuild**: «Сейчас в MTA» (live line + поиск) → «Активность» (лента с
+  deep links) → «Популярное» (топ серверов по реальному онлайну + горячие
+  обсуждения) → маркетплейс-секции PLAN-003 сохранены. Всё доступно Guest.
+- **Инвалидация кэша** на высокоценных мутациях (publish news/update, release
+  ресурса, тема/ответ, отзыв) — свежие события на Home мгновенно.
+- **Dashboard «Сейчас / За ночь»**: сводка с момента последнего визита
+  (`User.dashboardSeenAt`): обновления подписок, новые ответы в моих темах,
+  обновления купленных ресурсов, unread-уведомления; deep links; baseline
+  продвигается при каждом визите.
+
+### Приёмка PLAN-006 (2026-09-11)
+
+- Backend-тесты: **349/349** (337 до плана + 12 activity/dashboard).
+- Playwright browser E2E: **42/42** (plan001 12 + plan003 13 + plan005 12 +
+  plan006 5) на живых dev-серверах.
+- Production build web: exit 0; First Load JS shared 102 kB (без роста).
+- Миграция формальным путём: 10 additive ops (user.dashboardSeenAt + 9
+  индексов), пакет `20260911T0004_plan006_daily_experience` в git.
+- Performance: cold compute 93мс / warm 23мс; горячий путь — из кэша.
 
 ## Состояние продукта
 
@@ -148,9 +175,10 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Следующий шаг
 
-Решение по DAILY-EXPERIENCE §50 принято: [NEXT-PHASE.md](NEXT-PHASE.md)
-→ [PLAN-006 — Daily Experience Foundation](ACTIVE/PLAN-006.md) зарегистрирован
-в [ACTIVE/](ACTIVE/). Работа идёт по workstreams плана (реализация не начата).
-Прочие кандидаты (production verification — blockers PLAN-004/005, content
-layer, расширенная статистика серверов, events, email/push) и любые темы
-в этих списках не являются обязательством их реализовать.
+PLAN-006 (Daily Experience Foundation) выполнен — daily experience работает;
+следующий план формируется отдельным решением (автоматически не создаётся).
+Логичные кандидаты: production verification (blockers PLAN-004/005/006),
+content layer (статьи /content/articles — NEW_ARTICLE/CREATOR_PUBLICATION уже
+зарезервированы в activity layer), расширенная статистика серверов (графики),
+events, email/push. Наличие темы в списке не является обязательством её
+реализовать.
