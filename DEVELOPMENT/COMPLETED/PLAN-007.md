@@ -1,9 +1,10 @@
 # PLAN-007 — Content Foundation
 
-> СПЕЦИФИКАЦИЯ активного плана. Зарегистрирован: 2026-09-11.
+> Этот файл объединяет СПЕЦИФИКАЦИЮ плана (§0–§19) и ЗАПИСЬ О ВЫПОЛНЕНИИ
+> (EXECUTION RECORD, в конце документа) — по конвенции PLAN-002/005/006.
+> Статус: **IMPLEMENTATION COMPLETE** (2026-09-11); production-верификация
+> остаётся отдельным шагом (см. DEVELOPMENT/CURRENT.md).
 > Обоснование выбора фазы: [NEXT-PHASE.md](../NEXT-PHASE.md) (§8, Цикл 2).
-> Запись о выполнении (EXECUTION RECORD) добавляется в конец файла после
-> завершения (конвенция PLAN-002/005/006).
 
 ---
 
@@ -462,3 +463,143 @@ SCENARIO 3 — МОДЕРАТОР: очередь → reject с причиной
 
 Если статья не усиливает ни одну связь — она просто не попадёт в
 daily experience.
+
+---
+
+# EXECUTION RECORD — выполнено 2026-09-11
+
+**Статус: IMPLEMENTATION COMPLETE** (2026-09-11)
+
+## Итог
+
+Цель плана достигнута: CONTENT pillar перестал быть пустым. Статьи —
+полноценная публичная сущность: автор пишет черновик → модерация (approve /
+reject с причиной / hide) → публикация в хабе /content → страница статьи с
+явными связями (Resource / Server — staff-only для серверов) и обсуждением →
+слот NEW_ARTICLE в daily experience (Home-активность) → поиск находит статьи
+отдельной группой → профиль автора показывает публикации. Всё на
+существующей инфраструктуре: media-пайплайн, аудит, уведомления, репорты,
+форум-связи, activity read-layer.
+
+## Что сделано (по workstreams)
+
+### WORKSTREAM B — Article domain
+- Модель `Article` (slug unique, title 3–120, content ≤20000 plain text,
+  excerpt ≤300 авто, coverUrl через /upload/media, category
+  GUIDES/NEWS/REVIEWS/OPINION, tags comma-string, status
+  DRAFT/PENDING_REVIEW/PUBLISHED/ARCHIVED, publishedAt, reviewNote) +
+  `ArticleResourceLink` (только PUBLISHED ресурсы) + `ArticleServerLink`
+  (только staff сервера — прецедент G-004). ForumThread + `articleId`
+  (nullable unique, как newsId). Индексы: [status, publishedAt],
+  [authorId]. ReportTargetType + ARTICLE.
+- Миграция формальным путём: 22 ops,
+  `migrations/app/20260911T0112_plan007_content_foundation` в git;
+  dev — `db migrate`, тест-БД — `db update --confirm postgres` (drop check
+  constraint enum — единственная «destructive»-операция, безопасная:
+  пересоздание CHECK под новый enum).
+
+### WORKSTREAMS C/D — Авторский flow и модерация
+- `routes/content.ts`: POST /content (draft, userRateLimit, валидации),
+  PATCH /content/:id (автор; PUBLISHED/ARCHIVED → PENDING_REVIEW —
+  повторная модерация), POST /content/:id/submit, GET /content/mine (все
+  статусы + reviewNote), POST /content/:id/discussion (тред статьи, один на
+  статью), GET /content (хаб: PUBLISHED, фильтр категории, честная
+  пагинация, авторы, replyCount), GET /content/articles/:slug (страница;
+  связи рендерятся только пока сущность публична).
+- `routes/adminContent.ts`: GET /admin/content (очередь/статусы),
+  approve → PUBLISHED (+publishedAt, audit, MODERATION-уведомление автору,
+  bustActivityCache), reject → DRAFT (+reviewNote, уведомление), hide →
+  ARCHIVED (+уведомление + bust). adminOnly = как в adminCommunity.
+- Reports: ARTICLE — валидный targetType (target must exist → 404 иначе).
+
+### WORKSTREAMS E/F — Поверхности и daily experience
+- Web: хаб /content (карточки, категории-табы, пагинация), страница статьи
+  (абзацы — без сырого HTML; «Связанное» с ресурсами и серверами с живым
+  онлайном; блок «Обсуждение» со ссылкой на тред), визард /content/new
+  (Basic → Content → Media → Links → Submit; ресурсы из /resources/my,
+  серверы — только owned), /content/mine (статусы, «На модерацию»,
+  «Пересмотреть», «Открыть обсуждение», причина отказа видна), вкладка
+  «Статьи» в админке (очередь: Опубликовать/Вернуть/Скрыть с причиной).
+- Профиль автора: блок «Статьи» (только PUBLISHED).
+- Activity layer: тип NEW_ARTICLE (приоритет 5, как NEW_SERVER), только
+  PUBLISHED с publishedAt в окне; article-linked треды исключены из
+  NEW_DISCUSSION и «горячих обсуждений» (как news-linked — шум, §40).
+- Поиск: группа Articles в /search (title ILIKE, PUBLISHED only).
+- **Навигация**: «Статьи» в глобальной навигации (SURFACE-MAP §2).
+
+### Честный ремонт пробела PLAN-006 (записано в NEXT-PHASE §8-контексте)
+- `/search` отдавал 404: hero PLAN-006 вёл на несуществующую страницу
+  (бэкенд /search и клиент были, страницы не было; E2E не посещал её
+  напрямую). Построена `app/search/page.tsx` с типизированными группами
+  Resources / Servers / Discussions / Articles; useSearchParams обёрнут в
+  Suspense (требование статического prerender — build без него падал).
+
+### WORKSTREAM H — Seed
+- seed-plan005 расширен секцией PLAN-007 (идемпотентно по slug):
+  «Какой framework выбрать для RP-сервера» (GUIDES, связь с night-city-rp,
+  тред), «Оптимизация MTA-сервера: таймеры и колбэки» (GUIDES, связь с
+  dust-rally, тред) — оба из примеров DAILY-EXPERIENCE; «Ночь открытий»
+  (NEWS), «Демо-ресурсы: как проверить покупку» (REVIEWS); + DRAFT и
+  PENDING_REVIEW для витрины статусов.
+
+### §12–§15 — Тесты и регресс
+- `tests/plan007-content.test.ts` (9): 401 гостю; полный lifecycle
+  create→submit→approve (хаб/страница/уведомление/NEW_ARTICLE/профиль);
+  reject с причиной (видна автору в /content/mine); hide — исчезает из хаба,
+  404 по slug, отсутствует в активности; связи (чужой сервер 403, свой ok,
+  SUSPENDED ресурс 400, PUBLISHED рендерится); правка PUBLISHED →
+  PENDING_REVIEW; discussion (один тред, 409 повтор, не попадает в
+  NEW_DISCUSSION); поиск (PUBLISHED да, draft нет); reports ARTICLE
+  (201 + 404 на несуществующий).
+- Полный backend: **358/358** (349 + 9 PLAN-007).
+- Playwright: **47/47** (plan001 12 + plan003 13 + plan005 12 + plan006 5 +
+  plan007 5) — полный регресс на живых dev-серверах.
+- Production build web: exit 0 (после Suspense-фикса /search).
+- `tsc --noEmit` чист у server и web.
+
+### Финальные счёта приёмки (2026-09-11)
+
+- Backend (vitest): **358/358** (337 → 349 после PLAN-006 → 358 после
+  PLAN-007).
+- Playwright browser E2E: **47/47**.
+- Production build web: exit 0.
+- Миграция: 22 additive ops (`20260911T0112_plan007_content_foundation`).
+- Performance: activity snapshot с NEW_ARTICLE: cold **86.8мс** / warm
+  **23.2мс** (dev-БД) — в том же bounded-наборе запросов.
+- Live-проверка: хаб /content показывает 4 seed-статьи; публикация появляется
+  в Home-активности мгновенно (инвалидация кэша на approve).
+
+## Уроки окружения (дополнение к PLAN-005/006)
+
+1. **db update с enum-изменениями**: добавление значения enum трактуется как
+   destructive (drop/recreate CHECK) — на non-interactive прогонах нужен
+   `--confirm <имя_базы>` (для тест-БД — `--confirm postgres`).
+2. **useSearchParams + static prerender**: клиентская страница с
+   useSearchParams обязана иметь Suspense-границу, иначе next build падает
+   на prerender («Export encountered an error on /search»).
+3. **Set.entries()** в JS — пары [value, value], не индексы: для
+   позиционных вставок приводить к массиву.
+4. **Реакция Твиттера не нужна, а вот psql-чистки с масками** e2e% требуют
+   исключения e2e-admin (логин plan001 beforeAll) и e2e_seller_% (их ресурсы
+   нужны для FK-безопасных чисток ресурсов).
+
+## §17 Walkthrough
+
+- SCENARIO 1 (ЧИТАТЕЛЬ): Home → активность «Новая статья: …» → страница
+  статьи → «Связанное» → ресурс. ✅ (E2E 1–2)
+- SCENARIO 2 (АВТОР): регистрация → /content/new → submit → админ approve →
+  статья на Home → тред с ответом. ✅ (E2E 1)
+- SCENARIO 3 (МОДЕРАТОР): очередь → reject с причиной → автор видит причину.
+  ✅ (E2E 4)
+
+## Ограничения
+
+- Контент — plain text с абзацами; markdown/HTML-рендер — осознанно не
+  реализован (безопасность и простота модерации, A-002).
+- Editorial featured/подборки — нет (нет editorial logic, SURFACE-MAP
+  §13.1).
+- CREATOR_PUBLICATION остаётся зарезервированным (devlogs создателей —
+  отдельная будущая сущность).
+- Follow статей/авторов не вводился (порядок DAILY-EXPERIENCE §16).
+- production-верификация остаётся решением владельца инфраструктуры
+  (blockers PLAN-004/005/006).

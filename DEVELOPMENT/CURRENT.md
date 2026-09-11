@@ -1,26 +1,45 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (PLAN-007 зарегистрирован; реализация не начата).
+Обновлено: 2026-09-11 (после выполнения PLAN-007).
 
 ## Активный план
 
-[PLAN-007 — Content Foundation](ACTIVE/PLAN-007.md) (зарегистрирован
-2026-09-11). Переход состояния: из «статей не существует» в «статьи —
-полноценная публичная сущность с модерацией, обсуждениями, связями с
-ресурсами/серверами и слотом NEW_ARTICLE в daily experience». Обоснование
-выбора фазы — [NEXT-PHASE.md](NEXT-PHASE.md) (§8, Цикл 2). Реализация
-ещё не начата.
-
-Предыдущий план: PLAN-006 (Daily Experience Foundation) выполнен и
-зафиксирован ([COMPLETED/PLAN-006.md](COMPLETED/PLAN-006.md)) со статусом
+Нет. PLAN-007 (Content Foundation) выполнен и зафиксирован
+(см. [COMPLETED/PLAN-007.md](COMPLETED/PLAN-007.md)) со статусом
 **IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
 отдельным шагом** (см. Blockers внизу).
+
+Предыдущие планы: PLAN-005 (Community & Server Foundation) и PLAN-006
+(Daily Experience Foundation) — [COMPLETED/](COMPLETED/).
 
 ## Состояние продукта
 
 MTA Market — marketplace + community + server platform (см. [PROJECT.md](../PROJECT.md)).
 После PLAN-006 платформа отвечает на главный вопрос daily experience:
 Home — живой вход в экосистему («Что происходит в MTA прямо сейчас?»).
+
+### Что появилось в PLAN-007
+
+- **CONTENT pillar**: статьи как сущность (DRAFT → PENDING_REVIEW →
+  PUBLISHED/ARCHIVED, модерация с причиной, audit, уведомления автору),
+  хаб /content с категориями, страницы /content/articles/[slug] с явными
+  связями (ресурсы — любые PUBLISHED; серверы — только staff, G-004
+  прецедент), треды обсуждения, «Мои статьи», вкладка «Статьи» в админке,
+  репорты ARTICLE.
+- **Daily experience**: NEW_ARTICLE в активности Home (инвалидация кэша на
+  одобрении/скрытии), статья в профиле автора, группа Articles в /search,
+  «Статьи» в глобальной навигации.
+- **Ремонт пробела PLAN-006**: построена страница /search (hero вёл на
+  404-страницу).
+
+### Приёмка PLAN-007 (2026-09-11)
+
+- Backend-тесты: **358/358** (349 + 9 content).
+- Playwright browser E2E: **47/47** (42 + 5 plan007).
+- Production build web: exit 0; миграция 22 additive ops
+  (20260911T0112_plan007_content_foundation) в git.
+- Performance: activity cold 86.8мс / warm 23.2мс (статьи в том же
+  bounded-наборе).
 
 ### Что появилось в PLAN-006
 
@@ -182,9 +201,10 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Следующий шаг
 
-Решение Цикла 2 принято: [NEXT-PHASE.md](NEXT-PHASE.md) (§8) →
-[PLAN-007 — Content Foundation](ACTIVE/PLAN-007.md) зарегистрирован в
-[ACTIVE/](ACTIVE/). Работа идёт по workstreams плана (реализация не начата).
-Production verification остаётся решением владельца инфраструктуры (blockers
-PLAN-004/005/006). Прочие кандидаты (графики статистики, events, email/push)
-и любые темы в этих списках не являются обязательством их реализовать.
+Сформировать следующий план отдельным решением (автоматически не создаётся).
+Логичные кандидаты: production verification (blockers PLAN-004/005/006/007 —
+решение владельца инфраструктуры), creator publications/devlogs
+(CREATOR_PUBLICATION зарезервирован), гарантии/deals (Trust), расширенная
+статистика серверов (графики), events, email/push, follow Creator → Resource
+(порядок §16 из DAILY-EXPERIENCE). Наличие темы в списке не является
+обязательством её реализовать.
