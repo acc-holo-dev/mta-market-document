@@ -1,11 +1,18 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (после выполнения PLAN-006).
+Обновлено: 2026-09-11 (PLAN-007 зарегистрирован; реализация не начата).
 
 ## Активный план
 
-Нет. PLAN-006 (Daily Experience Foundation) выполнен и зафиксирован
-(см. [COMPLETED/PLAN-006.md](COMPLETED/PLAN-006.md)) со статусом
+[PLAN-007 — Content Foundation](ACTIVE/PLAN-007.md) (зарегистрирован
+2026-09-11). Переход состояния: из «статей не существует» в «статьи —
+полноценная публичная сущность с модерацией, обсуждениями, связями с
+ресурсами/серверами и слотом NEW_ARTICLE в daily experience». Обоснование
+выбора фазы — [NEXT-PHASE.md](NEXT-PHASE.md) (§8, Цикл 2). Реализация
+ещё не начата.
+
+Предыдущий план: PLAN-006 (Daily Experience Foundation) выполнен и
+зафиксирован ([COMPLETED/PLAN-006.md](COMPLETED/PLAN-006.md)) со статусом
 **IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
 отдельным шагом** (см. Blockers внизу).
 
@@ -175,10 +182,9 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Следующий шаг
 
-PLAN-006 (Daily Experience Foundation) выполнен — daily experience работает;
-следующий план формируется отдельным решением (автоматически не создаётся).
-Логичные кандидаты: production verification (blockers PLAN-004/005/006),
-content layer (статьи /content/articles — NEW_ARTICLE/CREATOR_PUBLICATION уже
-зарезервированы в activity layer), расширенная статистика серверов (графики),
-events, email/push. Наличие темы в списке не является обязательством её
-реализовать.
+Решение Цикла 2 принято: [NEXT-PHASE.md](NEXT-PHASE.md) (§8) →
+[PLAN-007 — Content Foundation](ACTIVE/PLAN-007.md) зарегистрирован в
+[ACTIVE/](ACTIVE/). Работа идёт по workstreams плана (реализация не начата).
+Production verification остаётся решением владельца инфраструктуры (blockers
+PLAN-004/005/006). Прочие кандидаты (графики статистики, events, email/push)
+и любые темы в этих списках не являются обязательством их реализовать.
