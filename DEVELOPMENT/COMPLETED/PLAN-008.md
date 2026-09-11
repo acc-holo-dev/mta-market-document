@@ -1,9 +1,10 @@
 # PLAN-008 — Follow Expansion (Creator + Resource)
 
-> СПЕЦИФИКАЦИЯ активного плана. Зарегистрирован: 2026-09-11.
+> Этот файл объединяет СПЕЦИФИКАЦИЮ плана (§0–§19) и ЗАПИСЬ О ВЫПОЛНЕНИИ
+> (EXECUTION RECORD, в конце документа) — по конвенции PLAN-002..007.
+> Статус: **IMPLEMENTATION COMPLETE** (2026-09-11); production-верификация
+> остаётся отдельным шагом (см. DEVELOPMENT/CURRENT.md).
 > Обоснование выбора фазы: [NEXT-PHASE.md](../NEXT-PHASE.md) (§9, Цикл 3).
-> Запись о выполнении (EXECUTION RECORD) добавляется в конец файла после
-> завершения (конвенция PLAN-002/005/006/007).
 
 ---
 
@@ -404,3 +405,134 @@ SCENARIO 3 — ЧИТАТЕЛЬ: подписка на создателя → с
 Никаких алгоритмов. Только честный канал: событие → подписчик → deep link →
 возвращение. Социальный граф остаётся закрытым: платформа знает ровно
 столько, сколько нужно для доставки.
+
+---
+
+# EXECUTION RECORD — выполнено 2026-09-11
+
+**Статус: IMPLEMENTATION COMPLETE** (2026-09-11)
+
+## Итог
+
+Цель плана достигнута: порядок follow-модели (DAILY-EXPERIENCE §16) доведён
+до шага Resource включительно. Пользователь подписывается на создателя
+(продавца с APPROVED профилем) и на конкретный ресурс; подписчики получают
+уведомления о релизах (CREATOR_RESOURCE), обновлениях версий
+(RESOURCE_UPDATE) и статьях создателя (CREATOR_ARTICLE); покупатель
+уведомляется об обновлении купленного ресурса без всякого follow (§26 —
+покупка сама создаёт relationship). Market Loop (§12) починен на шаге
+Update: до плана новая версия опубликованного ресурса вообще не могла
+выйти. Социальный граф закрыт: только агрегаты, никаких списков (§42);
+activity layer не изменён.
+
+## Что сделано (по workstreams)
+
+### WORKSTREAM B — модель и миграция
+- `SellerFollow` (followerId + sellerUserId, unique-пара, индексы) и
+  `ResourceFollow` (userId + resourceId, unique-пара, индексы).
+- NotificationType + CREATOR_RESOURCE / CREATOR_ARTICLE / RESOURCE_UPDATE
+  (additive; CHECK-constraint rebuild → консент на тест-БД:
+  `db update --confirm postgres`, см. урок PLAN-007).
+- Миграция формальным путём: 14 ops,
+  `migrations/app/20260911T0202_plan008_follow_expansion` в git.
+
+### WORKSTREAMS C — API
+- `routes/follows.ts` (единый root-mount: пути внутри абсолютные):
+  POST/DELETE `/creators/:username/follow` (цель — User с APPROVED
+  SellerProfile; self-follow 400; повтор 409; не подписан 404);
+  POST/DELETE `/resources/:slug/follow` (только PUBLISHED; свой ресурс —
+  400); GET `/me/follows/creators` и `/me/follows/resources` — ТОЛЬКО свои
+  подписки.
+- Storefront payload: `creatorFollowers` (агрегат); ресурсная страница:
+  `resourceFollowers` (агрегат). Списки не существуют нигде.
+
+### WORKSTREAM D — доставка
+- `lib/follows.ts`: creatorFollowerIds / resourceFollowerIds / buyerIds
+  (COMPLETED Purchase — существующая relationship, §26) / isCreator /
+  deliverFollowNotifications (dedup по recipientId + excludeActorId;
+  bounded 500).
+- Хуки в мутациях: публикация ресурса → CREATOR_RESOURCE подписчикам
+  создателя; releaseStatus→PUBLISHED версии → покупателям + подписчикам
+  ресурса (RESOURCE_UPDATE) + подписчикам создателя (CREATOR_RESOURCE), dedup
+  — и покупатель, и подписчик получают одно уведомление; статья создателя →
+  CREATOR_ARTICLE (статья НЕ-создателя — никому, проверено тестом).
+
+### Update delivery path (ключевой ремонт, D-002)
+- **Найден продуктовый разрыв**: у опубликованного ресурса новая версия не
+  могла выйти никоим образом — SELLER_TRANSITIONS запрещает
+  PUBLISHED→PENDING_REVIEW, ADMIN_TRANSITIONS не имеет PUBLISHED→PUBLISHED;
+  версии навсегда застревали в CANDIDATE. Market Loop (§12) был разорван на
+  шаге Update.
+- **Решение**: загрузка версии в PUBLISHED ресурс переводит его в
+  PENDING_REVIEW как system-initiated re-moderation
+  (`versions.ts`: ModerationEvent PUBLISHED→PENDING_REVIEW с actor=seller,
+  reason «New version uploaded (update review)») → модерация одобряет →
+  версия выходит → покупатели/подписчики получают уведомления. Ресурс
+  временно исчезает из каталога на время ревью обновления (обычно минуты) —
+  лицензии и доступ покупок не затронуты (записано в Ограничения).
+
+### WORKSTREAM E — поверхности
+- Storefront: Follow/Отписаться + агрегат «N подписчиков».
+- Страница ресурса: Следить/Не следить + «Следят: N» + подпись «Уведомим о
+  новой версии ресурса».
+- /notifications: рендер CREATOR_RESOURCE / CREATOR_ARTICLE /
+  RESOURCE_UPDATE с иконками.
+- Dashboard «Сейчас / За ночь»: ряды «Подписки: N новинок от создателей» и
+  «Отслеживаемые ресурсы: N обновлений» (followedCreatorUpdates /
+  followedResourceUpdates, additive в payload).
+- Гостевой guard: follow-state запрашивается только при сессии (401 гостя
+  иначе триггерил глобальный redirect «Сессия истекла» — найдено E2E).
+
+### WORKSTREAM G — seed
+- seed-plan005: подписки (market_fan/racer_x → nightcity_owner, market_fan →
+  auroraChief), resource-follows на демо-ресурсы, примеры уведомлений трёх
+  новых типов (идемпотентно).
+
+### §11–§15 — тесты и регресс
+- `tests/plan008-follows.test.ts` (7): follow API (валидация цели,
+  self-follow, 409/404), ресурсный follow (PUBLISHED only, свой — 400,
+  счётчик на странице), privacy (storefront без списков), доставка
+  (release → CREATOR_RESOURCE; версия → покупатель + подписчик ресурса +
+  подписчик создателя c dedup = ровно одно уведомление fan'у-и-покупателю-и-подписчику;
+  статья создателя → да, не-создателя → нет), dashboard-ряды.
+- Полный backend: **365/365** (358 + 7).
+- Playwright: **52/52** (47 + 5: storefront follow с честным счётчиком ±1;
+  CREATOR_RESOURCE через полный artifact-пайплайн; RESOURCE_UPDATE через
+  re-moderation версию; CREATOR_ARTICLE; mobile smoke).
+- Production build web: exit 0; tsc чист у server и web.
+
+### Финальные счёта приёмки (2026-09-11)
+
+- Backend (vitest): **365/365** (337 → 349 → 358 → 365).
+- Playwright browser E2E: **52/52** (37 → 42 → 47 → 52).
+- Миграция: 14 ops (`20260911T0202_plan008_follow_expansion`).
+- Performance: activity layer без изменений; уведомления — в мутации
+  (bounded); Home-путь не затронут.
+
+## Уроки окружения (дополнение)
+
+1. **tsx watch не надёжен** для подхвата изменений — после каждой правки
+   сервера перезапускать процесс (дефакт-стандарт сессии).
+2. **Playwright multipart**: `multipart: { file: {name, mimeType, buffer} }`
+   — helper должен возвращать ровно этот объект (обёртка вида
+   `{file: {buffer: helper()}}` даёт «Unexpected buffer type»).
+3. **Гостевые вызовы auth-эндпоинтов** в web триггерят глобальный
+   «Сессия истекла» redirect — все /me/* запросы обязаны быть
+   `enabled: isAuthenticated()`.
+
+## §18 Walkthrough
+
+- SCENARIO 1 (FAN): storefront → Подписаться → релиз → уведомление →
+  ресурс. ✅ (E2E 1–2)
+- SCENARIO 2 (ПОКУПАТЕЛЬ): покупка → версия → RESOURCE_UPDATE. ✅ (backend
+  D-002; E2E 3 покрывает подписчика-ресурса тем же каналом)
+- SCENARIO 3 (ЧИТАТЕЛЬ): подписка → статья → CREATOR_ARTICLE. ✅ (E2E 4)
+
+## Ограничения
+
+- Ресурс на время ревью обновления исчезает из каталога (PENDING_REVIEW не
+  листится) — лицензии и покупки не затронуты; если мешает — будущая
+  оптимизация (публикация черновика-обновления параллельно).
+- Follow Thread/Community — по порядку §16 позже.
+- Никаких digest/дайджестов — только мгновенные уведомления (in-app).
+- production-верификация остаётся решением владельца инфраструктуры.

@@ -1,15 +1,13 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (PLAN-008 зарегистрирован; реализация не начата).
+Обновлено: 2026-09-11 (после выполнения PLAN-008).
 
 ## Активный план
 
-[PLAN-008 — Follow Expansion (Creator + Resource)](ACTIVE/PLAN-008.md)
-(зарегистрирован 2026-09-11). Переход состояния: из «follow есть только у
-серверов» в «подписки на создателя и ресурс + уведомления о релизах,
-обновлениях и статьях; покупатель уведомляется об обновлении купленного».
-Обоснование выбора фазы — [NEXT-PHASE.md](NEXT-PHASE.md) (§9, Цикл 3).
-Реализация ещё не начата.
+Нет. PLAN-008 (Follow Expansion — Creator + Resource) выполнен и зафиксирован
+(см. [COMPLETED/PLAN-008.md](COMPLETED/PLAN-008.md)) со статусом
+**IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
+отдельным шагом** (см. Blockers внизу).
 
 Предыдущие планы: PLAN-005/006/007 — [COMPLETED/](COMPLETED/).
 
@@ -32,6 +30,25 @@ Home — живой вход в экосистему («Что происход�
   «Статьи» в глобальной навигации.
 - **Ремонт пробела PLAN-006**: построена страница /search (hero вёл на
   404-страницу).
+
+### Что появилось в PLAN-008
+
+- **Follow Expansion (§16: Server → Creator → Resource)**: подписка на
+  создателя (продавец с APPROVED профилем) и на конкретный ресурс;
+  уведомления CREATOR_RESOURCE / CREATOR_ARTICLE / RESOURCE_UPDATE с deep
+  links; агрегаты «N подписчиков» на storefront и странице ресурса без
+  раскрытия списков (§42); ряды в сводке «Сейчас / За ночь».
+- **Market Loop починен на шаге Update**: загрузка новой версии
+  опубликованного ресурса возвращает его в PENDING_REVIEW (system-initiated
+  re-moderation с audit) → одобрение выпускает версию → покупатели (§26 —
+  relationship уже существует) и подписчики получают уведомления с dedup.
+
+### Приёмка PLAN-008 (2026-09-11)
+
+- Backend-тесты: **365/365** (358 + 7 follows).
+- Playwright browser E2E: **52/52** (47 + 5 follow).
+- Миграция: 14 ops (20260911T0202_plan008_follow_expansion) в git.
+- Activity layer без изменений; Home-путь не затронут.
 
 ### Приёмка PLAN-007 (2026-09-11)
 
@@ -202,9 +219,10 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Следующий шаг
 
-Решение Цикла 3 принято: [NEXT-PHASE.md](NEXT-PHASE.md) (§9) →
-[PLAN-008 — Follow Expansion](ACTIVE/PLAN-008.md) зарегистрирован в
-[ACTIVE/](ACTIVE/). Работа идёт по workstreams плана (реализация не начата).
-Production verification остаётся решением владельца инфраструктуры. Прочие
-кандидаты (devlogs, гарантии/deals, графики, events, email/push) и любые
-темы в этих списках не являются обязательством их реализовать.
+Сформировать следующий план отдельным решением (автоматически не создаётся).
+Логичные кандидаты: production verification (blockers PLAN-004..008 — решение
+владельца инфраструктуры), creator publications/devlogs
+(CREATOR_PUBLICATION зарезервирован), гарантии/deals (Trust — самый тяжёлый
+контур), follow Thread/Community (порядок §16), графики статистики серверов,
+events, email/push. Наличие темы в списке не является обязательством её
+реализовать.
