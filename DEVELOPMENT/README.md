@@ -40,6 +40,7 @@ Development Plan — это не просто список задач.
 | [PLAN-007](COMPLETED/PLAN-007.md) | IMPLEMENTATION COMPLETE (2026-09-11) | Content Foundation: CONTENT pillar (статьи с модерацией, хаб /content, страницы статей с явными связями Resource/Server и тредами обсуждения, «Мои статьи», админ-очередь), NEW_ARTICLE в daily experience, Articles в поиске, статьи в профиле автора; заодно построена отсутствовавшая страница /search. |
 | [PLAN-008](COMPLETED/PLAN-008.md) | IMPLEMENTATION COMPLETE (2026-09-11) | Follow Expansion (Creator + Resource): подписки на создателя и ресурс (§16 до шага Resource), уведомления CREATOR_RESOURCE / CREATOR_ARTICLE / RESOURCE_UPDATE, покупатель уведомляется об обновлении купленного (§26), Market Loop починен на шаге Update (версия → re-moderation → release), агрегаты без раскрытия социального графа (§42). |
 | [PLAN-009](COMPLETED/PLAN-009.md) | IMPLEMENTATION COMPLETE (2026-09-11) | Thread Follow: шаг Follow в Community Loop (§10) — подписка на любое обсуждение, FORUM_REPLY доставляется подписчикам (dedup с автором и участниками), агрегат «N следят» на странице темы, ряд «Отслеживаемые обсуждения» в сводке; Community-follow отложен до появления сущности «сообщество». |
+| [PLAN-010](COMPLETED/PLAN-010.md) | IMPLEMENTATION COMPLETE (2026-09-11) | Creator Analytics Foundation: честный счётчик просмотров страниц ресурсов (агрегат ресурс×день, без идентичностей зрителей), блок «Аналитика» в кабинете продавца (просмотры/покупки/конверсия за 30 дней); просмотры — приватные данные продавца. |
 
 ## Правила работы с планами
 

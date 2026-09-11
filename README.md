@@ -21,7 +21,7 @@
 | [IDEAS/](IDEAS/) | **Идеи на будущее**. Наличие идеи здесь не создаёт обязательство её реализовать. |
 | [DEVELOPMENT/](DEVELOPMENT/) | **Development Plan system**: планы-переходы, текущее состояние, завершённые планы, замороженные контракты. |
 | [DEVELOPMENT/CURRENT.md](DEVELOPMENT/CURRENT.md) | Текущее состояние продукта и статус планов — начинать отсюда при работе над кодом. |
-| [DEVELOPMENT/ACTIVE/](DEVELOPMENT/ACTIVE/) | Активный план (ровно один): [PLAN-010 — Creator Analytics Foundation](DEVELOPMENT/ACTIVE/PLAN-010.md). |
+| [DEVELOPMENT/ACTIVE/](DEVELOPMENT/ACTIVE/) | Активный план (ровно один). Сейчас пуст — PLAN-010 завершён. |
 | [DEVELOPMENT/COMPLETED/](DEVELOPMENT/COMPLETED/) | Завершённые планы: спецификация + запись о выполнении (PLAN-001…005). |
 | [DEVELOPMENT/REFERENCE/](DEVELOPMENT/REFERENCE/) | Замороженные технические контракты (DRM Protocol v2, контракт репозиториев, матрица совместимости). Код — источник истины при расхождении. |
 
