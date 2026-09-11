@@ -1,16 +1,17 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (после выполнения PLAN-007).
+Обновлено: 2026-09-11 (PLAN-008 зарегистрирован; реализация не начата).
 
 ## Активный план
 
-Нет. PLAN-007 (Content Foundation) выполнен и зафиксирован
-(см. [COMPLETED/PLAN-007.md](COMPLETED/PLAN-007.md)) со статусом
-**IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
-отдельным шагом** (см. Blockers внизу).
+[PLAN-008 — Follow Expansion (Creator + Resource)](ACTIVE/PLAN-008.md)
+(зарегистрирован 2026-09-11). Переход состояния: из «follow есть только у
+серверов» в «подписки на создателя и ресурс + уведомления о релизах,
+обновлениях и статьях; покупатель уведомляется об обновлении купленного».
+Обоснование выбора фазы — [NEXT-PHASE.md](NEXT-PHASE.md) (§9, Цикл 3).
+Реализация ещё не начата.
 
-Предыдущие планы: PLAN-005 (Community & Server Foundation) и PLAN-006
-(Daily Experience Foundation) — [COMPLETED/](COMPLETED/).
+Предыдущие планы: PLAN-005/006/007 — [COMPLETED/](COMPLETED/).
 
 ## Состояние продукта
 
@@ -201,10 +202,9 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Следующий шаг
 
-Сформировать следующий план отдельным решением (автоматически не создаётся).
-Логичные кандидаты: production verification (blockers PLAN-004/005/006/007 —
-решение владельца инфраструктуры), creator publications/devlogs
-(CREATOR_PUBLICATION зарезервирован), гарантии/deals (Trust), расширенная
-статистика серверов (графики), events, email/push, follow Creator → Resource
-(порядок §16 из DAILY-EXPERIENCE). Наличие темы в списке не является
-обязательством её реализовать.
+Решение Цикла 3 принято: [NEXT-PHASE.md](NEXT-PHASE.md) (§9) →
+[PLAN-008 — Follow Expansion](ACTIVE/PLAN-008.md) зарегистрирован в
+[ACTIVE/](ACTIVE/). Работа идёт по workstreams плана (реализация не начата).
+Production verification остаётся решением владельца инфраструктуры. Прочие
+кандидаты (devlogs, гарантии/deals, графики, events, email/push) и любые
+темы в этих списках не являются обязательством их реализовать.
