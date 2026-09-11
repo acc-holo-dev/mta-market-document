@@ -1,15 +1,17 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (после выполнения PLAN-008).
+Обновлено: 2026-09-11 (PLAN-009 зарегистрирован; реализация не начата).
 
 ## Активный план
 
-Нет. PLAN-008 (Follow Expansion — Creator + Resource) выполнен и зафиксирован
-(см. [COMPLETED/PLAN-008.md](COMPLETED/PLAN-008.md)) со статусом
-**IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
-отдельным шагом** (см. Blockers внизу).
+[PLAN-009 — Thread Follow (Community Loop Completion)](ACTIVE/PLAN-009.md)
+(зарегистрирован 2026-09-11). Переход состояния: из «следить можно только за
+сервером/создателем/ресурсом» в «пользователь следит за обсуждением и
+получает уведомление о каждом ответе; сводка показывает ответы в
+отслеживаемых темах». Обоснование выбора фазы —
+[NEXT-PHASE.md](NEXT-PHASE.md) (§10, Цикл 4). Реализация ещё не начата.
 
-Предыдущие планы: PLAN-005/006/007 — [COMPLETED/](COMPLETED/).
+Предыдущие планы: PLAN-005/006/007/008 — [COMPLETED/](COMPLETED/).
 
 ## Состояние продукта
 
@@ -219,10 +221,9 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Следующий шаг
 
-Сформировать следующий план отдельным решением (автоматически не создаётся).
-Логичные кандидаты: production verification (blockers PLAN-004..008 — решение
-владельца инфраструктуры), creator publications/devlogs
-(CREATOR_PUBLICATION зарезервирован), гарантии/deals (Trust — самый тяжёлый
-контур), follow Thread/Community (порядок §16), графики статистики серверов,
-events, email/push. Наличие темы в списке не является обязательством её
-реализовать.
+Решение Цикла 4 принято: [NEXT-PHASE.md](NEXT-PHASE.md) (§10) →
+[PLAN-009 — Thread Follow](ACTIVE/PLAN-009.md) зарегистрирован в
+[ACTIVE/](ACTIVE/). Работа идёт по workstreams плана (реализация не начата).
+Production verification и гарантии/deals остаются решениями владельца
+(инфраструктура/payouts). Прочие кандидаты (графики статистики, devlogs,
+events, email/push) не являются обязательством их реализовать.
